@@ -1,1 +1,183 @@
+<!DOCTYPE html><html lang="ar">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ice Factory App</title><style>
+body {
+  font-family: Arial;
+  direction: rtl;
+  background: #f5f5f5;
+  padding: 10px;
+}
 
+h2 { text-align: center; }
+
+.section {
+  background: white;
+  padding: 10px;
+  margin: 10px 0;
+  border-radius: 10px;
+}
+
+button {
+  padding: 10px;
+  margin: 5px;
+  font-size: 16px;
+}
+
+.big-btn {
+  font-size: 18px;
+  padding: 15px;
+}
+
+input {
+  padding: 10px;
+  width: 100%;
+  margin-top: 5px;
+}
+
+.nav {
+  display: flex;
+  justify-content: space-around;
+  margin-top: 10px;
+}
+
+.nav button {
+  flex: 1;
+}
+</style></head><body><h2>🧊 إدارة مصنع الثلج</h2><!-- الصفحة الرئيسية --><div id="home"><div class="section">
+<h3>📊 ملخص اليوم</h3>
+<p id="summary"></p>
+</div><div class="section">
+<h3>🛒 البيع</h3><p>الكمية: <span id="qty">0</span></p><button onclick="addQty(0.5)">+0.5</button>
+<button onclick="addQty(1)">+1</button>
+<button onclick="addQty(5)">+5</button>
+<button onclick="addQty(10)">+10</button>
+
+<input type="number" id="price" placeholder="السعر"><br>
+<button class="big-btn" onclick="sell('cash')">💰 كاش</button>
+<button class="big-btn" onclick="sell('debt')">📒 دين</button></div></div><!-- الإنتاج --><div id="production" style="display:none;">
+<div class="section">
+<h3>🏭 الإنتاج</h3>
+<button onclick="addProduction()">إضافة دورة (340)</button>
+<p id="prodCount"></p>
+</div>
+</div><!-- المصروفات --><div id="expenses" style="display:none;">
+<div class="section">
+<h3>🧾 المصروفات</h3><input id="expName" placeholder="نوع المصروف">
+<input type="number" id="expAmount" placeholder="المبلغ"><button onclick="addExpense()">إضافة</button>
+
+</div>
+</div><!-- التقارير --><div id="report" style="display:none;">
+<div class="section">
+<h3>📊 التقرير</h3>
+<pre id="reportText"></pre>
+<button onclick="copyReport()">نسخ</button>
+</div>
+</div><!-- التنقل --><div class="nav">
+<button onclick="showPage('home')">🏠</button>
+<button onclick="showPage('production')">🏭</button>
+<button onclick="showPage('expenses')">🧾</button>
+<button onclick="showPage('report')">📊</button>
+</div><script>
+let qty = 0;
+
+let sales = JSON.parse(localStorage.getItem("sales")) || [];
+let expenses = JSON.parse(localStorage.getItem("expenses")) || [];
+let production = JSON.parse(localStorage.getItem("production")) || [];
+
+function addQty(n) {
+  qty += n;
+  document.getElementById("qty").innerText = qty;
+}
+
+function sell(type) {
+  const price = Number(document.getElementById("price").value);
+  if (!qty || !price) return;
+
+  const total = qty * price;
+
+  sales.push({ qty, price, total, type });
+
+  localStorage.setItem("sales", JSON.stringify(sales));
+
+  qty = 0;
+  document.getElementById("qty").innerText = 0;
+
+  update();
+}
+
+function addProduction() {
+  production.push({ count: 340 });
+  localStorage.setItem("production", JSON.stringify(production));
+  update();
+}
+
+function addExpense() {
+  const name = document.getElementById("expName").value;
+  const amount = Number(document.getElementById("expAmount").value);
+
+  if (!name || !amount) return;
+
+  expenses.push({ name, amount });
+
+  localStorage.setItem("expenses", JSON.stringify(expenses));
+
+  update();
+}
+
+function update() {
+  let cash = 0;
+  let debt = 0;
+
+  sales.forEach(s => {
+    if (s.type === 'cash') cash += s.total;
+    else debt += s.total;
+  });
+
+  let expTotal = expenses.reduce((a,b)=>a+b.amount,0);
+
+  document.getElementById("summary").innerText =
+    "💰 " + cash + " | 💳 " + debt + " | 🧾 " + expTotal;
+
+  document.getElementById("prodCount").innerText =
+    "عدد الدورات: " + production.length;
+
+  generateReport();
+}
+
+function generateReport() {
+  let totalSales = sales.reduce((a,b)=>a+b.total,0);
+  let totalProd = production.length * 340;
+  let expTotal = expenses.reduce((a,b)=>a+b.amount,0);
+
+  let text = `
+📊 تقرير
+
+الإنتاج: ${totalProd}
+المبيعات: ${totalSales}
+
+💰 كاش: ${sales.filter(s=>s.type==='cash').reduce((a,b)=>a+b.total,0)}
+💳 ديون: ${sales.filter(s=>s.type==='debt').reduce((a,b)=>a+b.total,0)}
+
+🧾 مصروفات: ${expTotal}
+`;
+
+  document.getElementById("reportText").innerText = text;
+}
+
+function copyReport() {
+  navigator.clipboard.writeText(document.getElementById("reportText").innerText);
+  alert("تم النسخ");
+}
+
+function showPage(id) {
+  ['home','production','expenses','report'].forEach(p=>{
+    document.getElementById(p).style.display = 'none';
+  });
+  document.getElementById(id).style.display = 'block';
+}
+
+update();
+</script></body>
+</html>
