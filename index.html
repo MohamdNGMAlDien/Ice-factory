@@ -1,28 +1,774 @@
 <!DOCTYPE html>
-<html>
+<html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <title>PDF Generation</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+    <title>نظام إدارة المصنع - ثلج وإنتاج وعمال</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
+    <!-- مكتبة html2canvas لتحويل HTML إلى صورة + jsPDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/gh/dawood2007/ar-fonts-for-jspdf@master/aref-ruqaa-normal.js"></script> <!-- Added Aref Ruqaa font -->
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Cairo', sans-serif;
+        }
+
+        body {
+            background: #eef2f7;
+            padding-bottom: 30px;
+        }
+
+        header {
+            background: #0b3b5f;
+            color: white;
+            padding: 16px;
+            text-align: center;
+            font-size: 1.5rem;
+            font-weight: bold;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .tabs {
+            display: flex;
+            background: #fff;
+            flex-wrap: wrap;
+            border-bottom: 2px solid #dce4ec;
+        }
+        .tab-btn {
+            flex: 1;
+            text-align: center;
+            padding: 12px 5px;
+            cursor: pointer;
+            font-weight: 600;
+            background: #f8fafc;
+            transition: 0.2s;
+            border: none;
+            font-size: 0.95rem;
+        }
+        .tab-btn.active {
+            background: #1e6f5c;
+            color: white;
+            border-bottom: 3px solid #ffc107;
+        }
+        .container {
+            padding: 12px;
+            max-width: 800px;
+            margin: auto;
+        }
+        .page {
+            display: none;
+            animation: fade 0.2s ease;
+        }
+        .page.active-page {
+            display: block;
+        }
+        @keyframes fade {
+            from { opacity: 0; } to { opacity: 1; }
+        }
+
+        .card {
+            background: white;
+            border-radius: 20px;
+            padding: 16px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        }
+        .card h3 {
+            color: #1e4660;
+            margin-bottom: 12px;
+            border-right: 4px solid #1e6f5c;
+            padding-right: 12px;
+        }
+        input, select, button {
+            width: 100%;
+            padding: 12px;
+            margin: 6px 0;
+            border-radius: 40px;
+            border: 1px solid #ccc;
+            font-size: 1rem;
+        }
+        button {
+            background: #1e6f5c;
+            color: white;
+            font-weight: bold;
+            border: none;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        button:active { transform: scale(0.97); }
+        .btn-danger { background: #c44536; }
+        .btn-warning { background: #e6a017; }
+        .btn-outline {
+            background: white;
+            border: 1px solid #1e6f5c;
+            color: #1e6f5c;
+        }
+        .btn-success { background: #2e7d32; }
+        .flex-btns {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .flex-btns button { flex: 1; }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.8rem;
+        }
+        th {
+            background: #1e4660;
+            color: white;
+            padding: 8px;
+        }
+        td, th {
+            border: 1px solid #cbd5e1;
+            padding: 6px;
+            text-align: center;
+        }
+        
+        .workers-table {
+            width: 100%;
+            font-size: 0.75rem;
+        }
+        .workers-table th, .workers-table td {
+            padding: 8px 4px;
+        }
+        .action-icons {
+            display: flex;
+            gap: 5px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        .icon-btn {
+            background: #e2e8f0;
+            border: none;
+            border-radius: 30px;
+            padding: 5px 10px;
+            font-size: 0.7rem;
+            cursor: pointer;
+        }
+        .icon-btn.edit { background: #3b82f6; color: white; }
+        .icon-btn.cycle { background: #e6a017; color: white; }
+        .icon-btn.advance { background: #8b5cf6; color: white; }
+
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #1e6f5c;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 50px;
+            font-weight: bold;
+            z-index: 1000;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            animation: fadeinout 2s ease forwards;
+        }
+        @keyframes fadeinout {
+            0% { opacity: 0; transform: translateX(-50%) translateY(20px); }
+            15% { opacity: 1; transform: translateX(-50%) translateY(0); }
+            85% { opacity: 1; transform: translateX(-50%) translateY(0); }
+            100% { opacity: 0; transform: translateX(-50%) translateY(20px); visibility: hidden; }
+        }
+        hr { margin: 12px 0; }
+        .workers-summary {
+            background: #f1f5f9;
+            border-radius: 16px;
+            padding: 12px;
+            margin-top: 12px;
+        }
+        .backup-info {
+            background: #e0f2fe;
+            padding: 8px 12px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            margin-top: 10px;
+        }
+        
+        /* منطقة التقاط الصورة للـ PDF */
+        #pdfCaptureArea {
+            background: white;
+            padding: 20px;
+            border-radius: 16px;
+            direction: rtl;
+            font-family: 'Cairo', sans-serif;
+            max-width: 100%;
+        }
+        .hidden-capture {
+            position: fixed;
+            top: -9999px;
+            left: -9999px;
+            width: 800px;
+            background: white;
+            padding: 20px;
+            z-index: -1;
+        }
+        @media (max-width: 650px) {
+            .workers-table { font-size: 0.7rem; }
+            .icon-btn { padding: 3px 8px; font-size: 0.65rem; }
+        }
+    </style>
 </head>
 <body>
-    <button onclick="generatePDF()">Generate PDF</button>
 
-    <script>
-        function generatePDF() {
-            const { jsPDF } = window.jspdf;
-            const doc = new jsPDF();
-            // Updated font for Arabic support
-            doc.addFont("ArefRuqaa-Regular.ttf", "ArefRuqaa", "normal");
-            doc.setFont("ArefRuqaa");
-            let line = 'Your Arabic text here...';
-            let y = 10;
-            doc.text(line, 550, y, {align: 'right'}); // Aligned to the right
-            // Adjust all other text positions accordingly
-            // For example: doc.text('Some other text', 550, y + 10, {align: 'right'});
-            doc.save('Report.pdf');
+<header>🏭 نظام المصنع المتكامل</header>
+<div class="tabs" id="tabsContainer">
+    <button class="tab-btn active" data-page="sales">💰 البيع</button>
+    <button class="tab-btn" data-page="productionExp">🏭 إنتاج & مصروفات</button>
+    <button class="tab-btn" data-page="workers">👥 العمال</button>
+    <button class="tab-btn" data-page="reports">📊 التقارير</button>
+</div>
+
+<div class="container">
+    <!-- صفحة البيع -->
+    <div id="sales" class="page active-page">
+        <div class="card">
+            <h3>➕ بيع الثلج</h3>
+            <div class="flex-btns">
+                <button id="incQty1">+1 لوح</button>
+                <button id="incQty5">+5 لوح</button>
+                <button id="incQty10">+10 لوح</button>
+                <button id="resetQtyBtn">🔄 تصفير</button>
+            </div>
+            <input type="number" id="saleQty" placeholder="الكمية (لوح)" value="0">
+            <input type="number" id="salePrice" placeholder="سعر اللوح" value="2.5" step="0.1">
+            <select id="saleType">
+                <option value="cash">💵 كاش</option>
+                <option value="debt">📝 دين</option>
+            </select>
+            <input type="text" id="customerName" placeholder="اسم الزبون (للديون)">
+            <button id="addSaleBtn">✅ تسجيل البيع</button>
+        </div>
+        <div class="card">
+            <h3>📋 ملخص سريع</h3>
+            <div id="quickStats">💰 كاش: 0 | 📋 ديون: 0 | 🧊 مخزون: 0</div>
+        </div>
+        <div class="card">
+            <h3>📜 سجل المبيعات</h3>
+            <div style="overflow-x: auto;">
+                <table id="salesTable">
+                    <thead><tr><th>التاريخ</th><th>الكمية</th><th>السعر</th><th>الإجمالي</th><th>نوع</th><th>الزبون</th><th></th></tr></thead>
+                    <tbody></tbody>
+                <table>
+            </div>
+        </div>
+    </div>
+
+    <!-- صفحة الإنتاج + المصروفات -->
+    <div id="productionExp" class="page">
+        <div class="card">
+            <h3>🏭 الإنتاج (دورة = 340 لوح)</h3>
+            <input type="date" id="prodDate" value="2025-04-24">
+            <button id="addProductionBtn">➕ إضافة دورة إنتاج</button>
+            <p>📦 إجمالي الإنتاج: <strong id="totalProdSpan">0</strong> لوح</p>
+        </div>
+        <div class="card">
+            <h3>💸 المصروفات</h3>
+            <input type="text" id="expDesc" placeholder="الوصف (فطور/صيانة/كهرباء)">
+            <input type="number" id="expAmount" placeholder="المبلغ">
+            <input type="date" id="expDate" value="2025-04-24">
+            <button id="addExpenseBtn">➕ إضافة مصروف</button>
+        </div>
+        <div class="card">
+            <h3>⚠️ التالف</h3>
+            <input type="number" id="damageQty" placeholder="عدد الألواح التالفة">
+            <input type="date" id="damageDate" value="2025-04-24">
+            <button id="addDamageBtn" class="btn-warning">تسجيل تالف</button>
+        </div>
+        <div class="card">
+            <h3>📉 قائمة المصروفات والتالف</h3>
+            <div style="overflow-x: auto;">
+                <table id="expensesTable">
+                    <thead><tr><th>التاريخ</th><th>النوع</th><th>المبلغ</th><th></th></tr></thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- صفحة العمال -->
+    <div id="workers" class="page">
+        <div class="card">
+            <h3>⚙️ إدارة العمال</h3>
+            <div style="overflow-x: auto;">
+                <table class="workers-table">
+                    <thead>
+                        <tr><th>#</th><th>اسم العامل</th><th>الدورات</th><th>المستحق</th><th>السلف</th><th>الصافي</th><th>إجراءات</th></tr>
+                    </thead>
+                    <tbody id="workersTableBody"></tbody>
+                </table>
+            </div>
+            <button id="addWorkerBtn" class="btn-outline" style="margin-top:15px;">➕ إضافة عامل جديد</button>
+        </div>
+        
+        <div class="card">
+            <h3>🔄 تسجيل دورة إنتاج جماعية</h3>
+            <button id="recordCycleBtn" style="background:#e6a017;">📝 تسجيل دورة (حضور يدوي لكل عامل)</button>
+            <p style="font-size:12px; margin-top:8px;">⚠️ سيتم سؤالك عن كل عامل على حدة: هل حضر الدورة؟ ثم إدخال أجره.</p>
+        </div>
+
+        <div class="card">
+            <h3>📋 ملخص مستحقات العمال</h3>
+            <div id="workersSummaryTable" class="workers-summary"></div>
+        </div>
+    </div>
+
+    <!-- صفحة التقارير -->
+    <div id="reports" class="page">
+        <div class="card">
+            <h3>📈 تقرير شامل (محاسبي)</h3>
+            <div id="fullReportDiv" style="background:#f1f5f9; padding:12px; border-radius:16px;"></div>
+            <div class="flex-btns" style="margin-top:15px;">
+                <button id="generatePdfBtn">📄 تحميل PDF (عربي)</button>
+                <button id="sharePdfBtn">📤 مشاركة PDF (واتساب)</button>
+                <button id="copyReportBtn">📋 نسخ التقرير</button>
+                <button id="resetWeekBtn" class="btn-danger">🔄 إعادة تعيين أسبوع جديد</button>
+            </div>
+            <div id="backupInfo" class="backup-info"></div>
+        </div>
+        <div class="card">
+            <h3>📅 جدول يومي (محاسبي)</h3>
+            <div style="overflow-x: auto;">
+                <table id="dailyLedger">
+                    <thead><tr><th>التاريخ</th><th>البيان</th><th>الكمية</th><th>المبلغ</th><th>النوع</th></tr></thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- منطقة مخفية لالتقاط صورة التقرير -->
+<div id="pdfCaptureContainer" class="hidden-capture">
+    <div id="pdfCaptureArea">
+        <div style="text-align:center; margin-bottom:20px;">
+            <h2 style="color:#0b3b5f;">🏭 تقرير مصنع الثلج</h2>
+            <p id="captureDate"></p>
+        </div>
+        <div id="captureContent"></div>
+        <div style="margin-top:20px; text-align:center; font-size:12px; color:#666;">
+            تم إنشاء التقرير بواسطة نظام المصنع المتكامل
+        </div>
+    </div>
+</div>
+
+<script>
+    // --------------------- البيانات -------------------------
+    let sales = JSON.parse(localStorage.getItem("factory_sales")) || [];
+    let productions = JSON.parse(localStorage.getItem("factory_productions")) || [];
+    let expenses = JSON.parse(localStorage.getItem("factory_expenses")) || [];
+    let damages = JSON.parse(localStorage.getItem("factory_damages")) || [];
+    let workers = JSON.parse(localStorage.getItem("factory_workers")) || [
+        { id: "w1", name: "محمد أحمد", cycles: 0, totalEarned: 0, advances: 0 },
+        { id: "w2", name: "خالد علي", cycles: 0, totalEarned: 0, advances: 0 },
+        { id: "w3", name: "سعيد جمال", cycles: 0, totalEarned: 0, advances: 0 },
+        { id: "w4", name: "نادر سمير", cycles: 0, totalEarned: 0, advances: 0 }
+    ];
+    let cyclesLog = JSON.parse(localStorage.getItem("factory_cyclesLog")) || [];
+
+    function showToast(message, isError = false) {
+        let toast = document.createElement("div");
+        toast.className = "toast";
+        toast.style.background = isError ? "#c44536" : "#1e6f5c";
+        toast.innerText = message;
+        document.body.appendChild(toast);
+        setTimeout(() => { if(toast) toast.remove(); }, 2500);
+    }
+
+    function saveAll() {
+        localStorage.setItem("factory_sales", JSON.stringify(sales));
+        localStorage.setItem("factory_productions", JSON.stringify(productions));
+        localStorage.setItem("factory_expenses", JSON.stringify(expenses));
+        localStorage.setItem("factory_damages", JSON.stringify(damages));
+        localStorage.setItem("factory_workers", JSON.stringify(workers));
+        localStorage.setItem("factory_cyclesLog", JSON.stringify(cyclesLog));
+    }
+
+    function showBackupInfo() {
+        let lastBackup = localStorage.getItem("factory_last_week_backup");
+        if(lastBackup) {
+            let backup = JSON.parse(lastBackup);
+            let backupDate = backup.backupDate || "تاريخ غير معروف";
+            document.getElementById("backupInfo").innerHTML = `📦 يوجد نسخة احتياطية للأسبوع السابق (تاريخ: ${backupDate}) - يمكنك البدء بأسبوع جديد`;
+        } else {
+            document.getElementById("backupInfo").innerHTML = `💡 لا توجد نسخة احتياطية سابقة. استخدم زر "إعادة تعيين أسبوع جديد" لحفظ البيانات الحالية وبدء أسبوع جديد.`;
         }
-    </script>
+    }
+
+    function resetToNewWeek() {
+        if(!confirm("⚠️ هل أنت متأكد؟\nسيتم حفظ بيانات الأسبوع الحالي كنسخة احتياطية، ثم مسح جميع البيانات لبدء أسبوع جديد. لا يمكن التراجع عن هذه العملية.")) return;
+        
+        const backupData = {
+            backupDate: new Date().toLocaleString('ar-EG'),
+            sales: JSON.parse(JSON.stringify(sales)),
+            productions: JSON.parse(JSON.stringify(productions)),
+            expenses: JSON.parse(JSON.stringify(expenses)),
+            damages: JSON.parse(JSON.stringify(damages)),
+            workers: JSON.parse(JSON.stringify(workers)),
+            cyclesLog: JSON.parse(JSON.stringify(cyclesLog))
+        };
+        localStorage.setItem("factory_last_week_backup", JSON.stringify(backupData));
+        
+        sales = [];
+        productions = [];
+        expenses = [];
+        damages = [];
+        cyclesLog = [];
+        workers = [
+            { id: "w1", name: "محمد أحمد", cycles: 0, totalEarned: 0, advances: 0 },
+            { id: "w2", name: "خالد علي", cycles: 0, totalEarned: 0, advances: 0 },
+            { id: "w3", name: "سعيد جمال", cycles: 0, totalEarned: 0, advances: 0 },
+            { id: "w4", name: "نادر سمير", cycles: 0, totalEarned: 0, advances: 0 }
+        ];
+        
+        saveAll();
+        refreshUI();
+        showBackupInfo();
+        showToast("✅ تم حفظ الأسبوع السابق وبدء أسبوع جديد بنجاح");
+    }
+
+    function getTotalProduction() { return productions.reduce((sum, p) => sum + p.boards, 0); }
+    function getTotalSalesQty() { return sales.reduce((sum, s) => sum + s.qty, 0); }
+    function getTotalDamages() { return damages.reduce((sum, d) => sum + d.qty, 0); }
+    function getApproxStock() { return getTotalProduction() - getTotalSalesQty() - getTotalDamages(); }
+    function getCashTotal() { return sales.filter(s => s.type === "cash").reduce((sum, s) => sum + s.total, 0); }
+    function getDebtsTotal() { return sales.filter(s => s.type === "debt").reduce((sum, s) => sum + s.total, 0); }
+    function getExpensesTotal() { return expenses.reduce((sum, e) => sum + e.amount, 0); }
+    function getNetProfit() { return getCashTotal() - getExpensesTotal(); }
+
+    function renderWorkersTable() {
+        let tbody = document.getElementById("workersTableBody");
+        tbody.innerHTML = workers.map((w, idx) => {
+            let net = w.totalEarned - w.advances;
+            return `
+                <tr>
+                    <td>${idx+1}</td>
+                    <td><strong>${w.name}</strong></td>
+                    <td>${w.cycles}</td>
+                    <td>${w.totalEarned.toFixed(2)}</td>
+                    <td>${w.advances.toFixed(2)}</td>
+                    <td style="color:${net>=0?'#15803d':'#c44536'}; font-weight:bold;">${net.toFixed(2)}</td>
+                    <td class="action-icons">
+                        <button class="icon-btn edit" onclick="editWorkerName(${idx})">✏️ تعديل</button>
+                        <button class="icon-btn cycle" onclick="addCycleForWorker(${idx})">🔄 دورة</button>
+                        <button class="icon-btn advance" onclick="addAdvanceForWorker(${idx})">💰 سلفة</button>
+                        <button class="icon-btn" style="background:#c44536;color:white;" onclick="deleteWorker(${idx})">🗑</button>
+                    </td>
+                </tr>
+            `;
+        }).join("");
+        
+        let summaryHtml = `<table style="width:100%; font-size:0.8rem;"><thead><tr><th>العامل</th><th>المستحق</th><th>السلف</th><th>الصافي</th></tr></thead><tbody>`;
+        workers.forEach(w => {
+            let net = w.totalEarned - w.advances;
+            summaryHtml += `<tr><td>${w.name}</td><td>${w.totalEarned.toFixed(2)}</td><td>${w.advances.toFixed(2)}</td><td style="font-weight:bold;">${net.toFixed(2)}</td></tr>`;
+        });
+        summaryHtml += `</tbody></table><div style="margin-top:8px; background:#e0f2fe; padding:8px; border-radius:12px;"><strong>💰 إجمالي المستحق للصرف:</strong> ${workers.reduce((s,w)=>s+(w.totalEarned - w.advances),0).toFixed(2)}</div>`;
+        document.getElementById("workersSummaryTable").innerHTML = summaryHtml;
+    }
+
+    window.addCycleForWorker = (idx) => {
+        let w = workers[idx];
+        let wage = parseFloat(prompt(`أجر العامل ${w.name} عن الدورة الجديدة:`));
+        if(!isNaN(wage) && wage > 0) {
+            w.cycles += 1;
+            w.totalEarned += wage;
+            cyclesLog.push({ workerId: w.id, workerName: w.name, date: new Date().toISOString().slice(0,10), earned: wage });
+            saveAll();
+            refreshUI();
+            showToast(`✅ تم إضافة دورة للعامل ${w.name} +${wage}`);
+        } else alert("قيمة غير صحيحة");
+    };
+
+    window.addAdvanceForWorker = (idx) => {
+        let amount = parseFloat(prompt(`قيمة السلفة للعامل ${workers[idx].name}:`));
+        if(!isNaN(amount) && amount > 0) {
+            workers[idx].advances += amount;
+            saveAll();
+            refreshUI();
+            showToast(`💰 سلفة ${amount} للعامل ${workers[idx].name}`);
+        }
+    };
+
+    window.editWorkerName = (idx) => {
+        let newName = prompt("الاسم الجديد:", workers[idx].name);
+        if(newName && newName.trim()) workers[idx].name = newName.trim();
+        saveAll();
+        refreshUI();
+    };
+    window.deleteWorker = (idx) => {
+        if(confirm("حذف العامل نهائياً؟")) {
+            workers.splice(idx,1);
+            saveAll();
+            refreshUI();
+            showToast("🗑 تم حذف العامل");
+        }
+    };
+    function addNewWorker() {
+        let name = prompt("اسم العامل الجديد:");
+        if(name && name.trim()) {
+            workers.push({ id: "w"+Date.now(), name: name.trim(), cycles: 0, totalEarned: 0, advances: 0 });
+            saveAll();
+            refreshUI();
+            showToast(`➕ تم إضافة العامل ${name}`);
+        }
+    }
+    function recordGroupCycle() {
+        let cycleDate = new Date().toISOString().slice(0,10);
+        for(let i=0; i<workers.length; i++) {
+            let w = workers[i];
+            let attended = confirm(`هل حضر العامل "${w.name}" الدورة اليوم؟\n(موافق = حضر / إلغاء = غائب)`);
+            if(attended) {
+                let wage = parseFloat(prompt(`أجر العامل ${w.name} عن هذه الدورة:`));
+                if(!isNaN(wage) && wage > 0) {
+                    w.cycles += 1;
+                    w.totalEarned += wage;
+                    cyclesLog.push({ workerId: w.id, workerName: w.name, date: cycleDate, earned: wage });
+                } else alert("لم يتم إضافة أجر للعامل "+w.name);
+            }
+        }
+        saveAll();
+        refreshUI();
+        showToast("✅ تم تسجيل حضور وأجور الدورة");
+    }
+
+    function refreshUI() {
+        document.getElementById("quickStats").innerHTML = `💰 كاش: ${getCashTotal().toFixed(2)} | 📋 ديون: ${getDebtsTotal().toFixed(2)} | 🧊 مخزون: ${getApproxStock()} لوح`;
+        document.getElementById("totalProdSpan").innerText = getTotalProduction();
+
+        let salesTbody = document.querySelector("#salesTable tbody");
+        salesTbody.innerHTML = sales.map((s, idx) => `
+            <tr>
+                <td>${s.date}</td><td>${s.qty}</td><td>${s.price}</td><td>${s.total.toFixed(2)}</td>
+                <td>${s.type === "cash" ? "كاش" : "دين"}</td><td>${s.customer || "-"}</td>
+                <td><button onclick="deleteSale(${idx})" style="background:#c44536; padding:4px 8px;">X</button></td>
+            </tr>
+        `).join("");
+
+        let expTbody = document.querySelector("#expensesTable tbody");
+        let combined = [...expenses.map((e, idx)=>({...e, idx, isDamage:false})), ...damages.map((d, idx)=>({date:d.date, desc:`تالف (${d.qty} لوح)`, amount:0, idx, isDamage:true}))];
+        combined.sort((a,b)=>(a.date > b.date ? -1 : 1));
+        expTbody.innerHTML = combined.map(item => item.isDamage ? 
+            `<tr><td>${item.date}</td><td>🔴 ${item.desc}</td><td>0</td><td><button onclick="deleteDamage(${item.idx})">X</button></td></tr>` :
+            `<tr><td>${item.date}</td><td>${item.desc}</td><td>${item.amount.toFixed(2)}</td><td><button onclick="deleteExpense(${item.idx})">X</button></td></tr>`
+        ).join("");
+        
+        renderWorkersTable();
+        renderReportsAndLedger();
+    }
+
+    window.deleteSale = (idx) => { sales.splice(idx,1); saveAll(); refreshUI(); showToast("🗑 تم حذف البيع"); };
+    window.deleteExpense = (idx) => { expenses.splice(idx,1); saveAll(); refreshUI(); showToast("🗑 تم حذف المصروف"); };
+    window.deleteDamage = (idx) => { damages.splice(idx,1); saveAll(); refreshUI(); showToast("🗑 تم حذف التالف"); };
+
+    function addSale() {
+        let qty = parseInt(document.getElementById("saleQty").value);
+        let price = parseFloat(document.getElementById("salePrice").value);
+        let type = document.getElementById("saleType").value;
+        let customer = document.getElementById("customerName").value;
+        if(!qty || qty<=0 || !price || price<=0) { alert("أدخل كمية وسعر"); return; }
+        sales.push({ date: new Date().toISOString().slice(0,10), qty, price, total: qty*price, type, customer: type==="debt"?customer:"" });
+        saveAll(); refreshUI();
+        document.getElementById("saleQty").value = "";
+        document.getElementById("customerName").value = "";
+        showToast(`✅ بيع ${qty} لوح`);
+    }
+    function addProduction() { productions.push({ date: document.getElementById("prodDate").value, boards: 340 }); saveAll(); refreshUI(); showToast("🏭 دورة إنتاج 340 لوح"); }
+    function addExpense() {
+        let desc = document.getElementById("expDesc").value, amount = parseFloat(document.getElementById("expAmount").value), date = document.getElementById("expDate").value;
+        if(!desc || !amount || amount<=0) { alert("أدخل وصف ومبلغ"); return; }
+        expenses.push({ date, desc, amount }); saveAll(); refreshUI();
+        document.getElementById("expDesc").value = ""; document.getElementById("expAmount").value = "";
+        showToast(`💸 مصروف: ${desc}`);
+    }
+    function addDamage() {
+        let qty = parseInt(document.getElementById("damageQty").value), date = document.getElementById("damageDate").value;
+        if(!qty || qty<=0) { alert("أدخل عدد التالف"); return; }
+        damages.push({ date, qty }); saveAll(); refreshUI();
+        document.getElementById("damageQty").value = "";
+        showToast(`⚠️ تالف ${qty} لوح`);
+    }
+    
+    function renderReportsAndLedger() {
+        let cash=getCashTotal(), debts=getDebtsTotal(), expTot=getExpensesTotal(), net=cash-expTot, stock=getApproxStock();
+        document.getElementById("fullReportDiv").innerHTML = `
+            <div><strong>📦 الإنتاج:</strong> ${getTotalProduction()} لوح</div>
+            <div><strong>🧊 المبيعات:</strong> ${getTotalSalesQty()} لوح</div>
+            <div><strong>⚠️ التالف:</strong> ${getTotalDamages()} لوح</div>
+            <div><strong>📦 المخزون:</strong> ${stock} لوح<hr>
+            <div><strong>💰 الكاش:</strong> ${cash.toFixed(2)}</div>
+            <div><strong>📋 الديون:</strong> ${debts.toFixed(2)}</div>
+            <div><strong>💸 المصروفات:</strong> ${expTot.toFixed(2)}</div>
+            <div><strong style="color:#15803d;">✅ صافي الربح:</strong> ${net.toFixed(2)}</div>
+        `;
+        let ledger = [];
+        sales.forEach(s=>ledger.push({date:s.date,desc:`بيع ${s.qty} لوح`,qty:s.qty,amount:s.total,type:s.type==="cash"?"كاش":"دين"}));
+        productions.forEach(p=>ledger.push({date:p.date,desc:`إنتاج ${p.boards} لوح`,qty:p.boards,amount:0,type:"إنتاج"}));
+        expenses.forEach(e=>ledger.push({date:e.date,desc:`مصروف: ${e.desc}`,qty:"-",amount:e.amount,type:"مصروف"}));
+        damages.forEach(d=>ledger.push({date:d.date,desc:`تالف ${d.qty} لوح`,qty:d.qty,amount:0,type:"تالف"}));
+        ledger.sort((a,b)=>a.date.localeCompare(b.date));
+        document.querySelector("#dailyLedger tbody").innerHTML = ledger.map(l=>`<tr><td>${l.date}</td><td>${l.desc}</td><td>${l.qty}</td><td>${l.amount===0?"-":l.amount.toFixed(2)}</td><td>${l.type}</td></tr>`).join("");
+    }
+
+    // دالة إنشاء PDF باستخدام html2canvas (يدعم العربية)
+    async function generatePDF(shareMode = false) {
+        showToast("⏳ جاري تجهيز التقرير...");
+        
+        try {
+            // تجهيز محتوى التقرير للصورة
+            const captureContainer = document.getElementById("pdfCaptureContainer");
+            const captureArea = document.getElementById("pdfCaptureArea");
+            const captureContent = document.getElementById("captureContent");
+            const captureDateSpan = document.getElementById("captureDate");
+            
+            // بناء محتوى التقرير
+            let html = `
+                <div style="font-family:'Cairo',sans-serif; line-height:1.6;">
+                    <div style="background:#f0f9ff; padding:12px; border-radius:12px; margin-bottom:15px;">
+                        <p><strong>📅 التاريخ:</strong> ${new Date().toLocaleDateString('ar-EG')}</p>
+                    </div>
+                    <div style="margin-bottom:15px;">
+                        <h4>📊 الملخص المالي</h4>
+                        <table style="width:100%; border-collapse:collapse; border:1px solid #ccc;">
+                            <tr style="background:#e2e8f0;"><th style="padding:8px;">البند</th><th style="padding:8px;">القيمة</th></tr>
+                            <tr><td>📦 إجمالي الإنتاج</td><td>${getTotalProduction()} لوح</td></tr>
+                            <tr><td>🧊 إجمالي المبيعات</td><td>${getTotalSalesQty()} لوح</td></tr>
+                            <tr><td>⚠️ التالف</td><td>${getTotalDamages()} لوح</td></tr>
+                            <tr><td>📦 المخزون التقريبي</td><td>${getApproxStock()} لوح</td></tr>
+                            <tr style="background:#e0f2fe;"><td>💰 إجمالي الكASH</td><td>${getCashTotal().toFixed(2)}</td></tr>
+                            <tr style="background:#fff3e0;"><td>📋 إجمالي الديون</td><td>${getDebtsTotal().toFixed(2)}</td></tr>
+                            <tr style="background:#fee2e2;"><td>💸 إجمالي المصروفات</td><td>${getExpensesTotal().toFixed(2)}</td></tr>
+                            <tr style="background:#dff9e6;"><td>✅ صافي الربح</td><td style="color:#15803d; font-weight:bold;">${getNetProfit().toFixed(2)}</td></tr>
+                        </table>
+                    </div>
+            `;
+            
+            // إضافة المبيعات الأخيرة
+            if(sales.length > 0) {
+                html += `<div style="margin-bottom:15px;"><h4>🛒 آخر المبيعات</h4>
+                <table style="width:100%; border-collapse:collapse; border:1px solid #ccc;">
+                    <tr style="background:#e2e8f0;"><th>التاريخ</th><th>الكمية</th><th>السعر</th><th>الإجمالي</th><th>النوع</th></tr>`;
+                sales.slice(-10).forEach(s => {
+                    html += `<tr><td>${s.date}</td><td>${s.qty}</td><td>${s.price}</td><td>${s.total.toFixed(2)}</td><td>${s.type === "cash" ? "كاش" : "دين"}</td></tr>`;
+                });
+                html += `</table></div>`;
+            }
+            
+            // إضافة ملخص العمال
+            if(workers.length > 0) {
+                html += `<div><h4>👥 مستحقات العمال</h4>
+                <table style="width:100%; border-collapse:collapse; border:1px solid #ccc;">
+                    <tr style="background:#e2e8f0;"><th>العامل</th><th>المستحق</th><th>السلف</th><th>الصافي</th></tr>`;
+                workers.forEach(w => {
+                    let net = w.totalEarned - w.advances;
+                    html += `<tr><td>${w.name}</td><td>${w.totalEarned.toFixed(2)}</td><td>${w.advances.toFixed(2)}</td><td style="color:${net>=0?'green':'red'}">${net.toFixed(2)}</td></tr>`;
+                });
+                html += `</table></div>`;
+            }
+            
+            html += `</div>`;
+            captureContent.innerHTML = html;
+            captureDateSpan.innerText = `تاريخ التقرير: ${new Date().toLocaleDateString('ar-EG')}`;
+            
+            // إظهار المنطقة مؤقتاً
+            captureContainer.style.position = "fixed";
+            captureContainer.style.top = "0";
+            captureContainer.style.left = "0";
+            captureContainer.style.width = "800px";
+            captureContainer.style.zIndex = "-1";
+            captureContainer.style.opacity = "0";
+            captureContainer.style.pointerEvents = "none";
+            
+            await new Promise(r => setTimeout(r, 100));
+            
+            // تحويل إلى صورة
+            const canvas = await html2canvas(captureArea, {
+                scale: 2,
+                backgroundColor: "#ffffff",
+                useCORS: true,
+                logging: false
+            });
+            
+            // إخفاء المنطقة مرة أخرى
+            captureContainer.style.position = "fixed";
+            captureContainer.style.top = "-9999px";
+            
+            // تحويل الصورة إلى PDF
+            const imgData = canvas.toDataURL("image/png");
+            const { jsPDF } = window.jspdf;
+            const imgWidth = 210; // A4 width in mm
+            const pageHeight = 297;
+            const imgHeight = (canvas.height * imgWidth) / canvas.width;
+            let pdf = new jsPDF({ unit: "mm", format: "a4" });
+            pdf.addImage(imgData, "PNG", 0, 0, imgWidth, imgHeight);
+            
+            const fileName = `report_${Date.now()}.pdf`;
+            
+            if(shareMode && navigator.share) {
+                const pdfBlob = pdf.output("blob");
+                const file = new File([pdfBlob], fileName, { type: "application/pdf" });
+                await navigator.share({
+                    title: "تقرير المصنع",
+                    text: "التقرير المحاسبي للمصنع",
+                    files: [file]
+                });
+                showToast("📤 تمت مشاركة التقرير بنجاح");
+            } else {
+                pdf.save(fileName);
+                showToast("📄 تم حفظ تقرير PDF في مجلد التحميلات");
+            }
+        } catch(err) {
+            console.error("PDF Error:", err);
+            showToast("❌ حدث خطأ أثناء إنشاء PDF", true);
+        }
+    }
+
+    function copyFullReport() {
+        let cash=getCashTotal(), debts=getDebtsTotal(), expTot=getExpensesTotal(), net=cash-expTot;
+        let text = `تقرير المصنع\nكاش:${cash.toFixed(2)}\nديون:${debts.toFixed(2)}\nمصروفات:${expTot.toFixed(2)}\nصافي الربح:${net.toFixed(2)}\nالمخزون:${getApproxStock()}`;
+        navigator.clipboard.writeText(text);
+        showToast("📋 تم نسخ التقرير");
+    }
+
+    // ربط الأحداث
+    document.getElementById("addSaleBtn").onclick = addSale;
+    document.getElementById("addProductionBtn").onclick = addProduction;
+    document.getElementById("addExpenseBtn").onclick = addExpense;
+    document.getElementById("addDamageBtn").onclick = addDamage;
+    document.getElementById("recordCycleBtn").onclick = recordGroupCycle;
+    document.getElementById("addWorkerBtn").onclick = addNewWorker;
+    document.getElementById("generatePdfBtn").onclick = () => generatePDF(false);
+    document.getElementById("sharePdfBtn").onclick = () => generatePDF(true);
+    document.getElementById("copyReportBtn").onclick = copyFullReport;
+    document.getElementById("resetWeekBtn").onclick = resetToNewWeek;
+
+    document.getElementById("incQty1").onclick = () => { let inp = document.getElementById("saleQty"); inp.value = (+inp.value || 0) + 1; };
+    document.getElementById("incQty5").onclick = () => { let inp = document.getElementById("saleQty"); inp.value = (+inp.value || 0) + 5; };
+    document.getElementById("incQty10").onclick = () => { let inp = document.getElementById("saleQty"); inp.value = (+inp.value || 0) + 10; };
+    document.getElementById("resetQtyBtn").onclick = () => { document.getElementById("saleQty").value = 0; };
+
+    let btns = document.querySelectorAll(".tab-btn");
+    let pages = document.querySelectorAll(".page");
+    btns.forEach(btn => {
+        btn.addEventListener("click", () => {
+            let pageId = btn.getAttribute("data-page");
+            btns.forEach(b => b.classList.remove("active"));
+            btn.classList.add("active");
+            pages.forEach(p => p.classList.remove("active-page"));
+            document.getElementById(pageId).classList.add("active-page");
+        });
+    });
+    
+    refreshUI();
+    showBackupInfo();
+</script>
 </body>
 </html>
