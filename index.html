@@ -44,6 +44,16 @@
         .hidden-capture { position: fixed; top: -9999px; left: -9999px; width: 750px; background: white; padding: 20px; z-index: -1; }
         @media (max-width: 650px) { .workers-table { font-size: 0.65rem; } .icon-btn { padding: 3px 6px; font-size: 0.6rem; } }
     </style>
+
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0b3b5f">
+    <script>
+if('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw.js').then(() => {
+        console.log('Service Worker registered');
+    });
+}
+</script>
 </head>
 <body>
 
