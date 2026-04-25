@@ -44,14 +44,13 @@
         .backup-info { background: #e0f2fe; padding: 8px 12px; border-radius: 12px; font-size: 0.7rem; margin-top: 10px; }
         .hidden-capture { position: fixed; top: -9999px; left: -9999px; width: 750px; background: white; padding: 20px; z-index: -1; }
         .badge-debt { background: #fee2e2; color: #c44536; padding: 2px 6px; border-radius: 20px; font-size: 0.7rem; }
+        .customer-required { border: 2px solid #e6a017 !important; background: #fff8e7 !important; }
         @media (max-width: 650px) { .workers-table, .debt-table { font-size: 0.65rem; } .icon-btn { padding: 3px 6px; } .tab-btn { font-size: 0.75rem; } }
-      #customerSelect { transition: all 0.2s; }
-.customer-required { border: 2px solid #e6a017 !important; background: #fff8e7; }
     </style>
 </head>
 <body>
 
-<header> Ice factory - مصنع شلباب للثلج</header>
+<header>🏭 نظام المصنع المتكامل | إدارة الديون</header>
 <div class="tabs">
     <button class="tab-btn active" data-page="sales">💰 البيع</button>
     <button class="tab-btn" data-page="productionExp">🏭 إنتاج</button>
@@ -61,7 +60,7 @@
 </div>
 
 <div class="container">
-    <!-- صفحة البيع الجديدة مع الدفع الجزئي -->
+    <!-- صفحة البيع الجديدة -->
     <div id="sales" class="page active-page">
         <div class="card">
             <h3>➕ بيع الثلج (كاش / دين)</h3>
@@ -71,15 +70,17 @@
             <input type="number" id="saleQty" placeholder="الكمية (لوح)" value="0">
             <input type="number" id="salePrice" placeholder="سعر اللوح" value="2.5" step="0.1">
             <input type="number" id="paidNow" placeholder="المبلغ المدفوع الآن" value="0" step="0.1">
-            <select id="customerSelect"></select>
+            <select id="customerSelect">
+                <option value="">-- اختر عميل (للدين فقط) --</option>
+            </select>
             <button id="addCustomerBtn" class="btn-outline" style="margin-bottom:5px;">➕ عميل جديد</button>
             <button id="addSaleBtn" style="background:#2e7d32;">✅ تسجيل عملية شراء</button>
-            <p style="font-size:12px; margin-top:8px;">💰 إذا دفع المبلغ كاملاً = عملية كاش. إذا دفع أقل = يسجل دين بالمتبقي.</p>
+            <p style="font-size:12px; margin-top:8px;">💰 <strong>ملاحظة:</strong> عند دفع المبلغ كاملاً = كاش (بدون عميل). عند الدفع الجزئي أو دين كامل = يتطلب اختيار عميل.</p>
         </div>
         <div class="card"><h3>📋 ملخص سريع</h3><div id="quickStats"></div></div>
     </div>
 
-    <!-- صفحة الإنتاج والمصروفات (نفسها) -->
+    <!-- صفحة الإنتاج والمصروفات -->
     <div id="productionExp" class="page">
         <div class="card"><h3>🏭 الإنتاج (340 لوح)</h3><input type="date" id="prodDate"><button id="addProductionBtn">➕ إضافة دورة</button><p>📦 إجمالي الإنتاج: <strong id="totalProdSpan">0</strong></p></div>
         <div class="card"><h3>💸 المصروفات</h3><input type="text" id="expDesc" placeholder="الوصف"><input type="number" id="expAmount" placeholder="المبلغ"><input type="date" id="expDate"><button id="addExpenseBtn">➕ إضافة</button></div>
@@ -87,14 +88,14 @@
         <div class="card"><h3>📉 المصروفات والتالف</h3><div style="overflow-x:auto;"><table id="expensesTable"><thead><tr><th>التاريخ</th><th>النوع</th><th>المبلغ</th><th></th></tr></thead><tbody></tbody></table></div></div>
     </div>
 
-    <!-- صفحة العمال (نفسها) -->
+    <!-- صفحة العمال -->
     <div id="workers" class="page">
         <div class="card"><h3>⚙️ إدارة العمال</h3><div style="overflow-x:auto;"><table class="workers-table"><thead><tr><th>#</th><th>الاسم</th><th>الدورات</th><th>المستحق</th><th>السلف</th><th>الصافي</th><th>إجراءات</th></tr></thead><tbody id="workersTableBody"></tbody></table></div><button id="addWorkerBtn" class="btn-outline">➕ عامل جديد</button></div>
         <div class="card"><h3>🔄 دورة إنتاج</h3><button id="recordCycleBtn" style="background:#e6a017;">تسجيل دورة (حضور يدوي)</button></div>
         <div class="card"><h3>📋 ملخص العمال</h3><div id="workersSummaryTable"></div></div>
     </div>
 
-    <!-- صفحة الديون الجديدة -->
+    <!-- صفحة الديون -->
     <div id="debts" class="page">
         <div class="card">
             <h3>📋 الديون النشطة</h3>
@@ -119,7 +120,7 @@
         </div>
     </div>
 
-    <!-- صفحة التقارير (نفسها مع تحديث البيانات) -->
+    <!-- صفحة التقارير -->
     <div id="reports" class="page">
         <div class="card"><h3>📈 تقرير شامل</h3><div id="fullReportDiv" style="background:#f1f5f9;padding:12px;border-radius:16px;"></div>
         <div class="flex-btns" style="margin-top:15px;"><button id="generatePdfBtn">📄 PDF كامل</button><button id="sharePdfBtn">📤 مشاركة PDF</button><button id="copyReportBtn">📋 نسخ</button><button id="resetWeekBtn" class="btn-danger">🔄 أسبوع جديد</button></div>
@@ -164,7 +165,7 @@ function getTotalProduction() { return productions.reduce((s, p) => s + p.boards
 function getTotalSalesQty() { return customerTransactions.filter(t => t.type === "purchase").reduce((s, t) => s + (t.qty || 0), 0); }
 function getTotalDamages() { return damages.reduce((s, d) => s + d.qty, 0); }
 function getApproxStock() { return getTotalProduction() - getTotalSalesQty() - getTotalDamages(); }
-function getCashTotal() { return customerTransactions.filter(t => t.remaining === 0 && t.type === "purchase").reduce((s, t) => s + t.paid, 0); }
+function getCashTotal() { return customerTransactions.filter(t => t.type === "purchase" && t.remaining === 0).reduce((s, t) => s + t.paid, 0); }
 function getDebtsTotal() { return customers.reduce((s, c) => s + (c.totalDebt || 0), 0); }
 function getExpensesTotal() { return expenses.reduce((s, e) => s + e.amount, 0); }
 function getNetProfit() { return getCashTotal() - getExpensesTotal(); }
@@ -204,7 +205,6 @@ function addCustomer() {
 
 // تسجيل عملية شراء (كاش أو دين جزئي)
 function addPurchase() {
-function addPurchase() {
     let qty = parseInt(document.getElementById("saleQty").value);
     let price = parseFloat(document.getElementById("salePrice").value);
     let paidNow = parseFloat(document.getElementById("paidNow").value);
@@ -221,7 +221,6 @@ function addPurchase() {
     
     // حالة الدفع الكامل (كاش) - لا يحتاج عميل
     if (remaining === 0) {
-        // تسجيل كمعاملة بدون عميل (نستخدم customerId = "cash")
         let transaction = {
             id: "t" + Date.now(),
             customerId: "cash",
@@ -274,7 +273,7 @@ function addPurchase() {
     document.getElementById("paidNow").value = "0";
     updateUI();
     showToast(`✅ تم تسجيل: ${qty} لوح للعميل ${customer.name}, دفع ${paidNow}, متبقي ${remaining}`);
-    }
+}
 
 // تسديد دين
 function repayDebt() {
@@ -325,7 +324,7 @@ function showCustomerHistory() {
 // تحديث القوائم المنسدلة للعملاء
 function updateCustomerSelects() {
     let options = customers.map(c => `<option value="${c.id}">${c.name} (متبقي: ${c.totalDebt?.toFixed(2) || 0})</option>`).join("");
-    document.getElementById("customerSelect").innerHTML = `<option value="">اختر عميلاً</option>` + options;
+    document.getElementById("customerSelect").innerHTML = `<option value="">-- اختر عميل (للدين فقط) --</option>` + options;
     document.getElementById("repayCustomerSelect").innerHTML = `<option value="">اختر عميلاً</option>` + options;
     document.getElementById("historyCustomerSelect").innerHTML = `<option value="">اختر عميلاً</option>` + options;
 }
@@ -336,7 +335,12 @@ function renderActiveDebts() {
     let tbody = document.getElementById("activeDebtsTable");
     if (activeDebts.length === 0) { tbody.innerHTML = `<tr><td colspan="4">لا توجد ديون نشطة</td></tr>`; return; }
     tbody.innerHTML = activeDebts.map(c => `
-        <tr><td><strong>${c.name}</strong></td><td class="badge-debt">${c.totalDebt.toFixed(2)}</td><td>${c.lastTransactionDate || "-"}</td><td><button onclick="quickRepay('${c.id}')" class="btn-sm" style="background:#2e7d32;width:auto;">تسديد</button></td></tr>
+        <tr>
+            <td><strong>${c.name}</strong></td>
+            <td class="badge-debt">${c.totalDebt.toFixed(2)}</td>
+            <td>${c.lastTransactionDate || "-"}</td>
+            <td><button onclick="quickRepay('${c.id}')" class="btn-sm" style="background:#2e7d32;width:auto;">تسديد</button></td>
+        </tr>
     `).join("");
 }
 window.quickRepay = (id) => {
@@ -344,7 +348,7 @@ window.quickRepay = (id) => {
     document.getElementById("repayAmount").focus();
 };
 
-// دوال العمال (مثل السابق)
+// دوال العمال
 function renderWorkersTable() {
     let tbody = document.getElementById("workersTableBody");
     tbody.innerHTML = workers.map((w, idx) => { let net = w.totalEarned - w.advances; return `<tr><td>${idx+1}</td><td>${w.name}</td><td>${w.cycles}</td><td>${w.totalEarned.toFixed(2)}</td><td>${w.advances.toFixed(2)}</td><td style="color:${net>=0?'#15803d':'#c44536'}">${net.toFixed(2)}</td><td class="action-icons"><button class="icon-btn edit" onclick="editWorker(${idx})">تعديل</button><button class="icon-btn cycle" onclick="addCycle(${idx})">دورة</button><button class="icon-btn advance" onclick="addAdvance(${idx})">سلفة</button><button class="icon-btn" style="background:#c44536;color:white;" onclick="delWorker(${idx})">حذف</button></td></tr>`; }).join("");
@@ -386,9 +390,24 @@ function updateUI() {
 window.delExpense = (i) => { expenses.splice(i,1); saveAll(); updateUI(); };
 window.delDamage = (i) => { damages.splice(i,1); saveAll(); updateUI(); };
 
-// PDF (نفس السابق)
+// التنبيه البصري للعميل عند الحاجة
+document.getElementById("paidNow").addEventListener("input", function() {
+    let qty = parseInt(document.getElementById("saleQty").value);
+    let price = parseFloat(document.getElementById("salePrice").value);
+    let paidNow = parseFloat(this.value);
+    let total = qty * price;
+    let remaining = total - paidNow;
+    let customerSelect = document.getElementById("customerSelect");
+    if (remaining > 0 && !customerSelect.value) {
+        customerSelect.classList.add("customer-required");
+    } else {
+        customerSelect.classList.remove("customer-required");
+    }
+});
+
+// PDF
 async function generatePDF(shareMode=false){
-    showToast("⏳ جاري تحضير التقرير...");
+    showToast("⏳ جاري تجهيز التقرير...");
     try{
         const captureDiv=document.getElementById("pdfCaptureArea");
         const captureContainer=document.getElementById("pdfCaptureContainer");
@@ -441,21 +460,6 @@ document.getElementById("resetQtyBtn").onclick = () => { document.getElementById
 document.querySelectorAll(".tab-btn").forEach(btn => { btn.onclick = () => { document.querySelectorAll(".tab-btn").forEach(b=>b.classList.remove("active")); btn.classList.add("active"); document.querySelectorAll(".page").forEach(p=>p.classList.remove("active-page")); document.getElementById(btn.dataset.page).classList.add("active-page"); }; });
 
 updateUI();
-    // ضع هذا الحدث بعد تحميل الصفحة (في نهاية الـ script)
-document.getElementById("paidNow").addEventListener("input", function() {
-    let qty = parseInt(document.getElementById("saleQty").value);
-    let price = parseFloat(document.getElementById("salePrice").value);
-    let paidNow = parseFloat(this.value);
-    let total = qty * price;
-    let remaining = total - paidNow;
-    let customerSelect = document.getElementById("customerSelect");
-    
-    if (remaining > 0 && !customerSelect.value) {
-        customerSelect.classList.add("customer-required");
-    } else {
-        customerSelect.classList.remove("customer-required");
-    }
-});
 </script>
 </body>
 </html>
