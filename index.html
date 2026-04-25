@@ -418,41 +418,120 @@
     });
     
     async function generatePDF(shareMode=false){
-        showToast("⏳ جاري تجهيز التقرير...");
-        try{
-            const captureDiv=document.getElementById("pdfCaptureArea");
-            const captureContainer=document.getElementById("pdfCaptureContainer");
-            const contentDiv=document.getElementById("captureContent");
-            let html=`<div style="font-family:'Cairo',sans-serif;padding:10px;"><div style="text-align:center;margin-bottom:20px;"><h2 style="color:#0b3b5f;">🏭 تقرير مصنع الثلج</h2><p>${new Date().toLocaleDateString('ar-EG')}</p></div>
-            <h3>📊 الملخص المالي</h3><table style="width:100%;border-collapse:collapse;border:1px solid #ccc;margin-bottom:20px;"><tr style="background:#e2e8f0;"><th>البند</th><th>القيمة</th>去
-            <tr><td>📦 إجمالي الإنتاج</td><td>${getTotalProduction()} لوح</td></tr>
-            <tr><td>🧊 إجمالي المبيعات</td><td>${getTotalSalesQty()} لوح</td></tr>
-            <tr><td>⚠️ التالف</td><td>${getTotalDamages()} لوح</td></tr>
-            <tr><td>📦 المخزون</td><td>${getApproxStock()} لوح</td></tr>
-            <tr style="background:#e0f2fe;"><td>💰 الكاش</td><td>${getCashTotal().toFixed(2)}</td></tr>
-            <tr style="background:#fff3e0;"><td>📋 الديون</td><td>${getDebtsTotal().toFixed(2)}</td></tr>
-            <tr style="background:#fee2e2;"><td>💸 المصروفات</td><td>${getExpensesTotal().toFixed(2)}</td></tr>
-            <tr style="background:#dff9e6;"><td>✅ صافي الربح</td><td style="color:#15803d;">${getNetProfit().toFixed(2)}</td></tr>
+    showToast("⏳ جاري تجهيز التقرير...");
+    try{
+        const captureDiv = document.getElementById("pdfCaptureArea");
+        const captureContainer = document.getElementById("pdfCaptureContainer");
+        const contentDiv = document.getElementById("captureContent");
+        
+        // بناء السجل اليومي
+        let ledgerRows = "";
+        let ledger = [];
+        customerTransactions.filter(t=>t.type==="purchase").forEach(s=>ledger.push({date:s.date,desc:`بيع ${s.qty} لوح`,qty:s.qty,amount:s.paid,type:s.remaining===0?"كاش":"دين"}));
+        productions.forEach(p=>ledger.push({date:p.date,desc:`إنتاج ${p.boards} لوح`,qty:p.boards,amount:0,type:"إنتاج"}));
+        expenses.forEach(e=>ledger.push({date:e.date,desc:`مصروف: ${e.desc}`,qty:"-",amount:e.amount,type:"مصروف"}));
+        damages.forEach(d=>ledger.push({date:d.date,desc:`تالف ${d.qty} لوح`,qty:d.qty,amount:0,type:"تالف"}));
+        ledger.sort((a,b)=>a.date.localeCompare(b.date));
+        
+        ledger.forEach(l => {
+            ledgerRows += `<tr>
+                <td style="border:1px solid #ccc;padding:6px;">${l.date}</td>
+                <td style="border:1px solid #ccc;padding:6px;">${l.desc}</td>
+                <td style="border:1px solid #ccc;padding:6px;">${l.qty}</td>
+                <td style="border:1px solid #ccc;padding:6px;">${l.amount === 0 ? "-" : l.amount.toFixed(2)}</td>
+                <td style="border:1px solid #ccc;padding:6px;">${l.type}</td>
+            </tr>`;
+        });
+        
+        let html = `<div style="font-family:'Cairo',sans-serif;padding:10px;">
+            <div style="text-align:center;margin-bottom:20px;">
+                <h2 style="color:#0b3b5f;">🏭 تقرير مصنع الثلج</h2>
+                <p>${new Date().toLocaleDateString('ar-EG')}</p>
+            </div>
+            
+            <!-- القسم الأول: الملخص المالي -->
+            <h3>📊 الملخص المالي</h3>
+            <table style="width:100%;border-collapse:collapse;border:1px solid #ccc;margin-bottom:20px;">
+                <tr style="background:#e2e8f0;"><th style="padding:8px;">البند</th><th style="padding:8px;">القيمة</th></tr>
+                <tr><td style="padding:6px;">📦 إجمالي الإنتاج</td><td style="padding:6px;">${getTotalProduction()} لوح</td></tr>
+                <tr><td style="padding:6px;">🧊 إجمالي المبيعات</td><td style="padding:6px;">${getTotalSalesQty()} لوح</td></tr>
+                <tr><td style="padding:6px;">⚠️ إجمالي التالف</td><td style="padding:6px;">${getTotalDamages()} لوح</td></tr>
+                <tr><td style="padding:6px;">📦 المخزون التقريبي</td><td style="padding:6px;">${getApproxStock()} لوح</td></tr>
+                <tr style="background:#e0f2fe;"><td style="padding:6px;">💰 إجمالي الكاش</td><td style="padding:6px;">${getCashTotal().toFixed(2)}</td></tr>
+                <tr style="background:#fff3e0;"><td style="padding:6px;">📋 إجمالي الديون</td><td style="padding:6px;">${getDebtsTotal().toFixed(2)}</td></tr>
+                <tr style="background:#fee2e2;"><td style="padding:6px;">💸 إجمالي المصروفات</td><td style="padding:6px;">${getExpensesTotal().toFixed(2)}</td></tr>
+                <tr style="background:#dff9e6;"><td style="padding:6px;">✅ صافي الربح</td><td style="padding:6px; color:#15803d; font-weight:bold;">${getNetProfit().toFixed(2)}</td></tr>
             </table>
-            <h3>📋 الديون النشطة</h3><table style="width:100%;border-collapse:collapse;border:1px solid #ccc;"><tr><th>العميل</th><th>المتبقي</th></tr>${customers.filter(c=>c.totalDebt>0).map(c=>`<tr><td>${c.name}</td><td>${c.totalDebt.toFixed(2)}</td></tr>`).join("")}</td></div>`;
-            contentDiv.innerHTML=html;
-            captureContainer.style.position="fixed"; captureContainer.style.top="0"; captureContainer.style.left="0"; captureContainer.style.width="750px"; captureContainer.style.zIndex="-1"; captureContainer.style.opacity="0";
-            await new Promise(r=>setTimeout(r,200));
-            const canvas=await html2canvas(captureDiv,{scale:2,backgroundColor:"#ffffff",logging:false});
-            const imgData=canvas.toDataURL("image/png");
-            const {jsPDF}=window.jspdf;
-            const imgWidth=210, imgHeight=(canvas.height*imgWidth)/canvas.width;
-            let pdf=new jsPDF({unit:"mm",format:"a4"});
-            pdf.addImage(imgData,"PNG",0,0,imgWidth,imgHeight);
-            captureContainer.style.top="-9999px";
-            if(shareMode && navigator.share){
-                const blob=pdf.output("blob");
-                const file=new File([blob],`report_${Date.now()}.pdf`,{type:"application/pdf"});
-                await navigator.share({title:"تقرير المصنع",files:[file]});
-                showToast("📤 تمت المشاركة");
-            } else { pdf.save(`report_${Date.now()}.pdf`); showToast("📄 تم حفظ التقرير"); }
-        } catch(e){ console.error(e); showToast("❌ خطأ",true); }
+            
+            <!-- القسم الثاني: الديون النشطة -->
+            <h3>📋 الديون النشطة</h3>
+            <table style="width:100%;border-collapse:collapse;border:1px solid #ccc;margin-bottom:20px;">
+                <tr style="background:#e2e8f0;"><th style="padding:8px;">العميل</th><th style="padding:8px;">المتبقي</th></tr>
+                ${customers.filter(c=>c.totalDebt>0).map(c=>`<tr><td style="padding:6px;">${c.name}</td><td style="padding:6px; background:#fee2e2;">${c.totalDebt.toFixed(2)}</td></tr>`).join("")}
+                ${customers.filter(c=>c.totalDebt>0).length === 0 ? '<tr><td colspan="2" style="padding:6px; text-align:center;">لا توجد ديون نشطة</td></tr>' : ''}
+            </table>
+            
+            <!-- القسم الثالث: السجل اليومي (الجديد) -->
+            <h3>📅 السجل اليومي (جميع المعاملات)</h3>
+            <table style="width:100%;border-collapse:collapse;border:1px solid #ccc;">
+                <tr style="background:#e2e8f0;">
+                    <th style="padding:8px;">التاريخ</th>
+                    <th style="padding:8px;">البيان</th>
+                    <th style="padding:8px;">الكمية</th>
+                    <th style="padding:8px;">المبلغ</th>
+                    <th style="padding:8px;">النوع</th>
+                </tr>
+                ${ledgerRows}
+                ${ledger.length === 0 ? '<tr><td colspan="5" style="padding:6px; text-align:center;">لا توجد معاملات</td></tr>' : ''}
+            </table>
+        </div>`;
+        
+        contentDiv.innerHTML = html;
+        captureContainer.style.position = "fixed";
+        captureContainer.style.top = "0";
+        captureContainer.style.left = "0";
+        captureContainer.style.width = "750px";
+        captureContainer.style.zIndex = "-1";
+        captureContainer.style.opacity = "0";
+        
+        await new Promise(r => setTimeout(r, 200));
+        
+        const canvas = await html2canvas(captureDiv, { scale: 2, backgroundColor: "#ffffff", logging: false });
+        const imgData = canvas.toDataURL("image/png");
+        const { jsPDF } = window.jspdf;
+        const imgWidth = 210;
+        const imgHeight = (canvas.height * imgWidth) / canvas.width;
+        let pdf = new jsPDF({ unit: "mm", format: "a4" });
+        
+        // إضافة الصفحات بشكل ديناميكي إذا كان المحتوى طويلاً
+        let heightLeft = imgHeight;
+        let position = 0;
+        pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
+        heightLeft -= 297;
+        
+        while (heightLeft > 0) {
+            position = heightLeft - imgHeight;
+            pdf.addPage();
+            pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
+            heightLeft -= 297;
+        }
+        
+        captureContainer.style.top = "-9999px";
+        
+        if (shareMode && navigator.share) {
+            const blob = pdf.output("blob");
+            const file = new File([blob], `report_${Date.now()}.pdf`, { type: "application/pdf" });
+            await navigator.share({ title: "تقرير المصنع", files: [file] });
+            showToast("📤 تمت المشاركة");
+        } else {
+            pdf.save(`report_${Date.now()}.pdf`);
+            showToast("📄 تم حفظ التقرير الكامل");
+        }
+    } catch(e){ 
+        console.error(e); 
+        showToast("❌ حدث خطأ في إنشاء التقرير", true); 
     }
+}
     function copyReport(){ let t=`تقرير المصنع\nكاش:${getCashTotal().toFixed(2)}\nديون:${getDebtsTotal().toFixed(2)}\nمصروفات:${getExpensesTotal().toFixed(2)}\nصافي الربح:${getNetProfit().toFixed(2)}\nالمخزون:${getApproxStock()}`; navigator.clipboard.writeText(t); showToast("📋 تم النسخ"); }
     
     // Event Listeners
