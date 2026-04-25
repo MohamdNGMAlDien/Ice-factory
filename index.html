@@ -45,6 +45,8 @@
         .hidden-capture { position: fixed; top: -9999px; left: -9999px; width: 750px; background: white; padding: 20px; z-index: -1; }
         .badge-debt { background: #fee2e2; color: #c44536; padding: 2px 6px; border-radius: 20px; font-size: 0.7rem; }
         @media (max-width: 650px) { .workers-table, .debt-table { font-size: 0.65rem; } .icon-btn { padding: 3px 6px; } .tab-btn { font-size: 0.75rem; } }
+      #customerSelect { transition: all 0.2s; }
+.customer-required { border: 2px solid #e6a017 !important; background: #fff8e7; }
     </style>
 </head>
 <body>
@@ -202,20 +204,60 @@ function addCustomer() {
 
 // تسجيل عملية شراء (كاش أو دين جزئي)
 function addPurchase() {
+function addPurchase() {
     let qty = parseInt(document.getElementById("saleQty").value);
     let price = parseFloat(document.getElementById("salePrice").value);
     let paidNow = parseFloat(document.getElementById("paidNow").value);
     let customerId = document.getElementById("customerSelect").value;
+    
     if (!qty || qty <= 0 || !price || price <= 0) { alert("أدخل كمية وسعر صحيح"); return; }
     if (isNaN(paidNow) || paidNow < 0) paidNow = 0;
+    
     let totalAmount = qty * price;
     let remaining = totalAmount - paidNow;
     if (remaining < 0) { alert("المبلغ المدفوع لا يمكن أن يزيد عن الإجمالي"); return; }
-    if (!customerId) { alert("اختر عميلاً أو أضف عميلاً جديداً"); return; }
+    
     let today = new Date().toISOString().slice(0,10);
+    
+    // حالة الدفع الكامل (كاش) - لا يحتاج عميل
+    if (remaining === 0) {
+        // تسجيل كمعاملة بدون عميل (نستخدم customerId = "cash")
+        let transaction = {
+            id: "t" + Date.now(),
+            customerId: "cash",
+            customerName: "كاش",
+            date: today,
+            type: "purchase",
+            qty: qty,
+            price: price,
+            totalAmount: totalAmount,
+            paid: paidNow,
+            remaining: 0,
+            note: "كاش - دفع كامل"
+        };
+        customerTransactions.push(transaction);
+        saveAll();
+        document.getElementById("saleQty").value = "0";
+        document.getElementById("paidNow").value = "0";
+        updateUI();
+        showToast(`✅ بيع كاش: ${qty} لوح, المبلغ ${totalAmount.toFixed(2)}`);
+        return;
+    }
+    
+    // حالات الدين (جزئي أو كامل) - تحتاج عميل
+    if (!customerId) {
+        document.getElementById("customerSelect").focus();
+        alert("عند الدفع الجزئي أو الدين الكامل، يجب اختيار عميل");
+        return;
+    }
+    
+    let customer = customers.find(c => c.id === customerId);
+    if (!customer) { alert("العميل غير موجود"); return; }
+    
     let transaction = {
         id: "t" + Date.now(),
         customerId: customerId,
+        customerName: customer.name,
         date: today,
         type: "purchase",
         qty: qty,
@@ -223,7 +265,7 @@ function addPurchase() {
         totalAmount: totalAmount,
         paid: paidNow,
         remaining: remaining,
-        note: paidNow === totalAmount ? "كاش" : (paidNow === 0 ? "دين كامل" : `دفع ${paidNow} والباقي ${remaining}`)
+        note: paidNow === 0 ? "دين كامل" : `دفع ${paidNow} والباقي ${remaining}`
     };
     customerTransactions.push(transaction);
     updateCustomersDebt();
@@ -231,8 +273,8 @@ function addPurchase() {
     document.getElementById("saleQty").value = "0";
     document.getElementById("paidNow").value = "0";
     updateUI();
-    showToast(`✅ تم تسجيل: ${qty} لوح, دفع ${paidNow}, متبقي ${remaining}`);
-}
+    showToast(`✅ تم تسجيل: ${qty} لوح للعميل ${customer.name}, دفع ${paidNow}, متبقي ${remaining}`);
+    }
 
 // تسديد دين
 function repayDebt() {
@@ -399,6 +441,21 @@ document.getElementById("resetQtyBtn").onclick = () => { document.getElementById
 document.querySelectorAll(".tab-btn").forEach(btn => { btn.onclick = () => { document.querySelectorAll(".tab-btn").forEach(b=>b.classList.remove("active")); btn.classList.add("active"); document.querySelectorAll(".page").forEach(p=>p.classList.remove("active-page")); document.getElementById(btn.dataset.page).classList.add("active-page"); }; });
 
 updateUI();
+    // ضع هذا الحدث بعد تحميل الصفحة (في نهاية الـ script)
+document.getElementById("paidNow").addEventListener("input", function() {
+    let qty = parseInt(document.getElementById("saleQty").value);
+    let price = parseFloat(document.getElementById("salePrice").value);
+    let paidNow = parseFloat(this.value);
+    let total = qty * price;
+    let remaining = total - paidNow;
+    let customerSelect = document.getElementById("customerSelect");
+    
+    if (remaining > 0 && !customerSelect.value) {
+        customerSelect.classList.add("customer-required");
+    } else {
+        customerSelect.classList.remove("customer-required");
+    }
+});
 </script>
 </body>
 </html>
