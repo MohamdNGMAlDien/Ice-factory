@@ -373,7 +373,24 @@
     }
     window.editWorker = (idx) => { let n = prompt("الاسم الجديد:", workers[idx].name); if (n) workers[idx].name = n; saveAll(); updateUI(); };
     window.addCycle = (idx) => { let w = workers[idx], val = parseFloat(prompt(`أجر ${w.name} للدورة:`)); if (val > 0) { w.cycles++; w.totalEarned += val; cyclesLog.push({ workerId: w.id, date: new Date().toISOString().slice(0,10), earned: val }); saveAll(); updateUI(); showToast(`✅ دورة ${w.name} +${val}`); } };
-    window.addAdvance = (idx) => { let val = parseFloat(prompt(`سلفة للعامل ${workers[idx].name}:`)); if (val > 0) { workers[idx].advances += val; saveAll(); updateUI(); showToast(`💰 سلفة ${val}`); } };
+    window.addAdvance = (idx) => {
+    let val = parseFloat(prompt(`سلفة للعامل ${workers[idx].name}:`));
+    if (val > 0 && !isNaN(val)) {
+        // تسجيل السلفة في المصروفات
+        expenses.push({
+            date: new Date().toISOString().slice(0,10),
+            desc: `سلفة عامل - ${workers[idx].name}`,
+            amount: val
+        });
+        
+        // تسجيل السلفة في حساب العامل
+        workers[idx].advances += val;
+        
+        saveAll();
+        updateUI();
+        showToast(`💰 سلفة ${val} للعامل ${workers[idx].name} (سُجلت في المصروفات)`);
+    }
+};
     window.delWorker = (idx) => { if (confirm("حذف؟")) { workers.splice(idx,1); saveAll(); updateUI(); } };
     function addNewWorker() { let n = prompt("اسم العامل:"); if (n) workers.push({ id: "w"+Date.now(), name: n, cycles: 0, totalEarned: 0, advances: 0 }); saveAll(); updateUI(); }
     function recordGroupCycle() { let d = new Date().toISOString().slice(0,10); workers.forEach(w => { if (confirm(`هل حضر ${w.name}؟`)) { let wage = parseFloat(prompt(`أجره:`)); if (wage > 0) { w.cycles++; w.totalEarned += wage; cyclesLog.push({ workerId: w.id, date: d, earned: wage }); } } }); saveAll(); updateUI(); showToast("تم تسجيل الدورة"); }
