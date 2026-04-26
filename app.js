@@ -147,7 +147,7 @@ function buildUI() {
                     <button id="resetQtyBtn">تصفير</button>
                 </div>
                 <input type="number" id="saleQty" placeholder="الكمية" value="0">
-                <input type="number" id="salePrice" placeholder="السعر" value="2.5" step="0.1">
+                <input type="number" id="salePrice" placeholder="السعر" value="3000" step="0.1">
                 <input type="number" id="paidNow" placeholder="المدفوع الآن" value="0" step="0.1">
                 <select id="customerSelect"><option value="">-- اختر عميل --</option></select>
                 <button id="addCustomerBtn" class="btn-outline">➕ عميل جديد</button>
