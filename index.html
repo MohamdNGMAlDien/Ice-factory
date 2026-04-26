@@ -3,168 +3,97 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
-    <title>نظام المصنع المتكامل </title>
+    <title>نظام إدارة مصنع الثلج - متكامل</title>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
-    
     <!-- Firebase SDKs -->
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
-    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Cairo', sans-serif; }
         body { background: #eef2f7; padding-bottom: 30px; }
-        header { background: #0b3b5f; color: white; padding: 14px; text-align: center; font-size: 1.3rem; font-weight: bold; position: sticky; top: 0; z-index: 100; }
+        header { background: #0b3b5f; color: white; padding: 12px; text-align: center; font-size: 1.2rem; font-weight: bold; position: sticky; top: 0; z-index: 100; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; }
+        .user-info { font-size: 0.8rem; background: #1e4660; padding: 4px 12px; border-radius: 30px; display: inline-flex; gap: 8px; align-items: center; }
+        .logout-btn { background: #c44536; border: none; padding: 4px 12px; border-radius: 30px; color: white; cursor: pointer; }
         .tabs { display: flex; background: #fff; flex-wrap: wrap; border-bottom: 2px solid #dce4ec; }
-        .tab-btn { flex: 1; text-align: center; padding: 10px 4px; cursor: pointer; font-weight: 600; background: #f8fafc; border: none; font-size: 0.85rem; }
+        .tab-btn { flex: 1; text-align: center; padding: 10px 4px; cursor: pointer; font-weight: 600; background: #f8fafc; border: none; font-size: 0.8rem; }
         .tab-btn.active { background: #1e6f5c; color: white; border-bottom: 3px solid #ffc107; }
         .container { padding: 12px; max-width: 800px; margin: auto; }
         .page { display: none; animation: fade 0.2s ease; }
         .page.active-page { display: block; }
-        @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
         .card { background: white; border-radius: 20px; padding: 16px; margin-bottom: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
-        .card h3 { color: #1e4660; margin-bottom: 12px; border-right: 4px solid #1e6f5c; padding-right: 12px; font-size: 1.1rem; }
-        input, select, button { width: 100%; padding: 12px; margin: 6px 0; border-radius: 40px; border: 1px solid #ccc; font-size: 0.9rem; }
-        button { background: #1e6f5c; color: white; font-weight: bold; border: none; cursor: pointer; transition: 0.2s; }
+        .card h3 { color: #1e4660; margin-bottom: 12px; border-right: 4px solid #1e6f5c; padding-right: 12px; font-size: 1rem; }
+        input, select, button { width: 100%; padding: 10px; margin: 5px 0; border-radius: 40px; border: 1px solid #ccc; font-size: 0.9rem; }
+        button { background: #1e6f5c; color: white; font-weight: bold; cursor: pointer; }
         button:active { transform: scale(0.97); }
         .btn-danger { background: #c44536; }
         .btn-warning { background: #e6a017; }
         .btn-outline { background: white; border: 1px solid #1e6f5c; color: #1e6f5c; }
-        .btn-sm { padding: 6px 12px; width: auto; margin: 2px; font-size: 0.8rem; display: inline-block; }
         .flex-btns { display: flex; gap: 8px; flex-wrap: wrap; }
         .flex-btns button { flex: 1; }
         table { width: 100%; border-collapse: collapse; font-size: 0.7rem; }
-        th { background: #1e4660; color: white; padding: 8px; }
-        td, th { border: 1px solid #cbd5e1; padding: 6px; text-align: center; }
-        .workers-table, .debt-table { width: 100%; font-size: 0.7rem; }
-        .action-icons { display: flex; gap: 5px; justify-content: center; flex-wrap: wrap; }
-        .icon-btn { background: #e2e8f0; border: none; border-radius: 30px; padding: 4px 8px; font-size: 0.65rem; cursor: pointer; }
-        .icon-btn.edit { background: #3b82f6; color: white; }
-        .icon-btn.cycle { background: #e6a017; color: white; }
-        .icon-btn.advance { background: #8b5cf6; color: white; }
-        .toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background: #1e6f5c; color: white; padding: 10px 20px; border-radius: 50px; font-weight: bold; z-index: 1000; animation: fadeinout 2.5s ease forwards; font-size: 0.85rem; }
-        @keyframes fadeinout { 0% { opacity: 0; transform: translateX(-50%) translateY(20px); } 15% { opacity: 1; } 85% { opacity: 1; } 100% { opacity: 0; visibility: hidden; } }
-        .workers-summary, .debt-summary { background: #f1f5f9; border-radius: 16px; padding: 12px; margin-top: 12px; }
-        .backup-info { background: #e0f2fe; padding: 8px 12px; border-radius: 12px; font-size: 0.7rem; margin-top: 10px; }
-        .hidden-capture { position: fixed; top: -9999px; left: -9999px; width: 750px; background: white; padding: 20px; z-index: -1; }
-        .badge-debt { background: #fee2e2; color: #c44536; padding: 2px 6px; border-radius: 20px; font-size: 0.7rem; }
-        .customer-required { border: 2px solid #e6a017 !important; background: #fff8e7 !important; }
-        .sync-status { font-size: 0.7rem; background: #e0f2fe; border-radius: 20px; padding: 4px 12px; display: inline-block; margin-right: 10px; }
-        @media (max-width: 650px) { .workers-table, .debt-table { font-size: 0.65rem; } .icon-btn { padding: 3px 6px; } .tab-btn { font-size: 0.75rem; } }
+        th { background: #1e4660; color: white; padding: 6px; }
+        td, th { border: 1px solid #cbd5e1; padding: 5px; text-align: center; }
+        .toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background: #1e6f5c; color: white; padding: 8px 16px; border-radius: 50px; z-index: 2000; animation: fadeinout 2s ease forwards; font-size: 0.8rem; white-space: nowrap; }
+        @keyframes fadeinout { 0% { opacity: 0; } 15% { opacity: 1; } 85% { opacity: 1; } 100% { opacity: 0; visibility: hidden; } }
+        .date-range { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
+        .date-range input { width: auto; flex: 1; }
+        canvas { max-height: 250px; width: 100%; margin-bottom: 20px; background: white; border-radius: 16px; padding: 8px; }
+        .login-container { max-width: 400px; margin: 50px auto; background: white; padding: 20px; border-radius: 20px; }
+        .hidden { display: none; }
+        @media (max-width: 650px) { .tab-btn { font-size: 0.7rem; } .date-range input { font-size: 0.7rem; } .toast { white-space: normal; width: 80%; text-align: center; } }
     </style>
 </head>
 <body>
 
-<header>🏭 Ice factory - مصنع شلباب للثلج</header>
-<div class="tabs">
+<header>
+    <span>🏭 مصنع الثلج المتكامل</span>
+    <div class="user-info" id="userInfo">تحميل...</div>
+</header>
+<div class="tabs" id="tabsContainer">
     <button class="tab-btn active" data-page="sales">💰 البيع</button>
     <button class="tab-btn" data-page="productionExp">🏭 إنتاج</button>
     <button class="tab-btn" data-page="workers">👥 العمال</button>
     <button class="tab-btn" data-page="debts">📋 الديون</button>
     <button class="tab-btn" data-page="reports">📊 التقارير</button>
+    <button class="tab-btn" data-page="analytics">📈 تحليلات</button>
+    <button class="tab-btn" data-page="archive">🗄 أرشيف</button>
+</div>
+<div class="container" id="mainContainer">
+    <!-- سيتم ملء الصفحات لاحقاً عبر JavaScript حتى لا نطيل الرد -->
 </div>
 
-<div class="container">
-    <!-- صفحة البيع -->
-    <div id="sales" class="page active-page">
-        <div class="card">
-            <h3>➕ بيع الثلج (كاش / دين)</h3>
-            <div class="flex-btns">
-                <button id="incQty1">+1</button><button id="incQty5">+5</button><button id="incQty10">+10</button><button id="resetQtyBtn">تصفير</button>
-            </div>
-            <input type="number" id="saleQty" placeholder="الكمية (لوح)" value="0">
-            <input type="number" id="salePrice" placeholder="سعر اللوح" value="3000" step="0.1">
-            <input type="number" id="paidNow" placeholder="المبلغ المدفوع الآن" value="0" step="0.1">
-            <select id="customerSelect">
-                <option value="">-- اختر عميل (للدين فقط) --</option>
-            </select>
-            <button id="addCustomerBtn" class="btn-outline" style="margin-bottom:5px;">➕ عميل جديد</button>
-            <button id="addSaleBtn" style="background:#2e7d32;">✅ تسجيل عملية شراء</button>
-            <p style="font-size:12px; margin-top:8px;">💰 <strong>ملاحظة:</strong> عند دفع المبلغ كاملاً = كاش (بدون عميل). عند الدفع الجزئي أو دين كامل = يتطلب اختيار عميل.</p>
-        </div>
-        <div class="card"><h3>📋 ملخص سريع</h3><div id="quickStats"></div></div>
-    </div>
-
-    <!-- صفحة الإنتاج والمصروفات -->
-    <div id="productionExp" class="page">
-        <div class="card"><h3>🏭 الإنتاج (340 لوح)</h3><input type="date" id="prodDate"><button id="addProductionBtn">➕ إضافة دورة</button><p>📦 إجمالي الإنتاج: <strong id="totalProdSpan">0</strong></p></div>
-        <div class="card"><h3>💸 المصروفات</h3><input type="text" id="expDesc" placeholder="الوصف"><input type="number" id="expAmount" placeholder="المبلغ"><input type="date" id="expDate"><button id="addExpenseBtn">➕ إضافة</button></div>
-        <div class="card"><h3>⚠️ التالف</h3><input type="number" id="damageQty" placeholder="عدد الألواح"><input type="date" id="damageDate"><button id="addDamageBtn" class="btn-warning">تسجيل تالف</button></div>
-        <div class="card"><h3>📉 المصروفات والتالف</h3><div style="overflow-x:auto;"><table id="expensesTable"><thead><tr><th>التاريخ</th><th>النوع</th><th>المبلغ</th><th></th></td></thead><tbody></tbody></table></div></div>
-    </div>
-
-    <!-- صفحة العمال -->
-    <div id="workers" class="page">
-        <div class="card"><h3>⚙️ إدارة العمال</h3><div style="overflow-x:auto;"><table class="workers-table"><thead><tr><th>#</th><th>الاسم</th><th>الدورات</th><th>المستحق</th><th>السلف</th><th>الصافي</th><th>إجراءات</th></tr></thead><tbody id="workersTableBody"></tbody></table></div><button id="addWorkerBtn" class="btn-outline">➕ عامل جديد</button></div>
-        <div class="card"><h3>🔄 دورة إنتاج</h3><button id="recordCycleBtn" style="background:#e6a017;">تسجيل دورة (حضور يدوي)</button></div>
-        <div class="card"><h3>📋 ملخص العمال</h3><div id="workersSummaryTable"></div></div>
-    </div>
-
-    <!-- صفحة الديون -->
-    <div id="debts" class="page">
-        <div class="card">
-            <h3>📋 الديون النشطة</h3>
-            <div style="overflow-x:auto;">
-                <table class="debt-table">
-                    <thead><tr><th>العميل</th><th>المتبقي عليه</th><th>تاريخ آخر معاملة</th><th>إجراء</th></tr></thead>
-                    <tbody id="activeDebtsTable"></tbody>
-                </table>
-            </div>
-        </div>
-        <div class="card">
-            <h3>💰 تسديد دين</h3>
-            <select id="repayCustomerSelect"></select>
-            <input type="number" id="repayAmount" placeholder="المبلغ المسدد" step="0.1">
-            <button id="repayDebtBtn" style="background:#2e7d32;">تسديد</button>
-        </div>
-        <div class="card">
-            <h3>📜 سجل معاملات العميل</h3>
-            <select id="historyCustomerSelect"></select>
-            <button id="showHistoryBtn" class="btn-outline">عرض السجل</button>
-            <div id="customerHistory" style="margin-top:12px; overflow-x:auto;"></div>
-        </div>
-    </div>
-
-    <!-- صفحة التقارير -->
-    <div id="reports" class="page">
-        <div class="card"><h3>📈 تقرير شامل</h3><div id="fullReportDiv" style="background:#f1f5f9;padding:12px;border-radius:16px;"></div>
-        <div class="flex-btns" style="margin-top:15px;"><button id="generatePdfBtn">📄 PDF كامل</button><button id="sharePdfBtn">📤 مشاركة PDF</button><button id="copyReportBtn">📋 نسخ</button><button id="resetWeekBtn" class="btn-danger">🔄 أسبوع جديد</button></div>
-        <div id="backupInfo" class="backup-info"></div></div>
-        <div class="card"><h3>📅 سجل يومي</h3><div style="overflow-x:auto;"><table id="dailyLedger"><thead><tr><th>التاريخ</th><th>البيان</th><th>الكمية</th><th>المبلغ</th><th>النوع</th></tr></thead><tbody></tbody></table></div></div>
-    </div>
+<div id="authScreen" class="login-container">
+    <h3 style="text-align:center;">🔐 دخول المصنع</h3>
+    <input type="email" id="loginEmail" placeholder="البريد الإلكتروني">
+    <input type="password" id="loginPassword" placeholder="كلمة المرور">
+    <button id="loginBtn">تسجيل الدخول</button>
+    <button id="guestBtn" class="btn-outline" style="margin-top:8px;">دخول كزائر (قراءة محدودة)</button>
+    <p style="font-size:12px; margin-top:12px;">المدير: بريد مسجل مسبقاً | المستخدم العادي: يسجل بنفسه | الزائر: مشاهدة رسوم بيانية وتقارير عامة فقط</p>
 </div>
-
-<div id="pdfCaptureContainer" class="hidden-capture"><div id="pdfCaptureArea" style="background:white;padding:20px;font-family:'Cairo',sans-serif;"><div id="captureContent"></div><div style="margin-top:20px;text-align:center;font-size:11px;color:#666;">نظام المصنع المتكامل</div></div></div>
 
 <script>
-    // ------------------------- Firebase Configuration -------------------------
+    // -------------------- 1. إعداد Firebase --------------------
     const firebaseConfig = {
         apiKey: "AIzaSyDn0R9N4QW1DAWuwEkDF3LrYpT30a0vbRA",
         authDomain: "ice-factory-7a261.firebaseapp.com",
         projectId: "ice-factory-7a261",
         storageBucket: "ice-factory-7a261.firebasestorage.app",
         messagingSenderId: "816018835521",
-        appId: "1:816018835521:web:68f4bcea2826fb027a5ec0",
-        measurementId: "G-8XDKFMRL47"
+        appId: "1:816018835521:web:68f4bcea2826fb027a5ec0"
     };
-    
-    let db;
-    let firestoreAvailable = false;
-    
-    // Initialize Firebase
-    try {
-        firebase.initializeApp(firebaseConfig);
-        db = firebase.firestore();
-        // Enable offline persistence
-        db.enablePersistence({ synchronizeTabs: true })
-            .then(() => { console.log("✅ Offline persistence enabled"); firestoreAvailable = true; })
-            .catch((err) => { if (err.code == 'failed-precondition') { console.warn("Offline persistence failed"); } });
-        firestoreAvailable = true;
-        console.log("✅ Firebase initialized");
-    } catch (e) { console.error("Firebase init error:", e); firestoreAvailable = false; }
-    
-    // ------------------------- Data Structures -------------------------
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+    db.enablePersistence({ synchronizeTabs: true }).catch(console.warn);
+
+    // -------------------- 2. المتغيرات العامة --------------------
+    let currentUser = null;
+    let userRole = "guest";   // admin, viewer, guest
     let customers = [];
     let customerTransactions = [];
     let productions = [];
@@ -173,462 +102,614 @@
     let workers = [];
     let cyclesLog = [];
     
-    // Helper functions
-    function showToast(m, e) { let t = document.createElement("div"); t.className = "toast"; t.style.background = e ? "#c44536" : "#1e6f5c"; t.innerText = m; document.body.appendChild(t); setTimeout(() => t.remove(), 2500); }
-    
-    async function saveAll() {
-        if (!firestoreAvailable) return;
-        // Save to localStorage as backup
-        localStorage.setItem("factory_customers", JSON.stringify(customers));
-        localStorage.setItem("factory_customerTransactions", JSON.stringify(customerTransactions));
-        localStorage.setItem("factory_productions", JSON.stringify(productions));
-        localStorage.setItem("factory_expenses", JSON.stringify(expenses));
-        localStorage.setItem("factory_damages", JSON.stringify(damages));
-        localStorage.setItem("factory_workers", JSON.stringify(workers));
-        localStorage.setItem("factory_cyclesLog", JSON.stringify(cyclesLog));
-        
-        // Save to Firestore
-        try {
-            await db.collection("factory").doc("data").set({
-                customers: customers,
-                transactions: customerTransactions,
-                productions: productions,
-                expenses: expenses,
-                damages: damages,
-                workers: workers,
-                cyclesLog: cyclesLog,
-                lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
-            });
-        } catch (e) { console.error("Firestore save error:", e); showToast("⚠️ خطأ في حفظ البيانات على السحابة", true); }
+    // دوال مساعدة (سيكتمل الجزء الثاني)
+    function showToast(msg, isErr = false) {
+        let t = document.createElement("div");
+        t.className = "toast";
+        t.style.background = isErr ? "#c44536" : "#1e6f5c";
+        t.innerText = msg;
+        document.body.appendChild(t);
+        setTimeout(() => t.remove(), 2500);
     }
     
-    async function loadAll() {
-        // First load from localStorage
-        customers = JSON.parse(localStorage.getItem("factory_customers")) || [];
-        customerTransactions = JSON.parse(localStorage.getItem("factory_customerTransactions")) || [];
-        productions = JSON.parse(localStorage.getItem("factory_productions")) || [];
-        expenses = JSON.parse(localStorage.getItem("factory_expenses")) || [];
-        damages = JSON.parse(localStorage.getItem("factory_damages")) || [];
-        workers = JSON.parse(localStorage.getItem("factory_workers")) || [
-            { id: "w1", name: "محمد أحمد", cycles: 0, totalEarned: 0, advances: 0 },
-            { id: "w2", name: "خالد علي", cycles: 0, totalEarned: 0, advances: 0 },
-            { id: "w3", name: "سعيد جمال", cycles: 0, totalEarned: 0, advances: 0 },
-            { id: "w4", name: "نادر سمير", cycles: 0, totalEarned: 0, advances: 0 }
-        ];
-        cyclesLog = JSON.parse(localStorage.getItem("factory_cyclesLog")) || [];
-        
-        // Then try to load from Firestore (if available)
-        if (firestoreAvailable) {
-            try {
-                const doc = await db.collection("factory").doc("data").get();
-                if (doc.exists) {
-                    const data = doc.data();
-                    customers = data.customers || customers;
-                    customerTransactions = data.transactions || customerTransactions;
-                    productions = data.productions || productions;
-                    expenses = data.expenses || expenses;
-                    damages = data.damages || damages;
-                    workers = data.workers || workers;
-                    cyclesLog = data.cyclesLog || cyclesLog;
-                    showToast("☁️ تم تحميل البيانات من السحابة");
-                }
-            } catch (e) { console.error("Firestore load error:", e); }
-        }
-        updateUI();
+    // دوال الإحصائيات (سيتم إضافتها في الجزء الثاني)
+    // ...
+    
+    // سنكمل في الجزء الثاني...
+    console.log("الجزء الأول تم بنجاح. انتظر الجزء الثاني.");
+</script>
+    <script>
+    // -------------------- 3. بناء هيكل الصفحات (HTML داخلي) --------------------
+    function buildPages() {
+        const container = document.getElementById("mainContainer");
+        container.innerHTML = `
+            <!-- صفحة البيع -->
+            <div id="sales" class="page active-page">
+                <div class="card"><h3>➕ بيع الثلج (كاش / دين)</h3>
+                <div class="flex-btns"><button id="incQty1">+1</button><button id="incQty5">+5</button><button id="incQty10">+10</button><button id="resetQtyBtn">تصفير</button></div>
+                <input type="number" id="saleQty" placeholder="الكمية (لوح)" value="0">
+                <input type="number" id="salePrice" placeholder="سعر اللوح" value="2.5" step="0.1">
+                <input type="number" id="paidNow" placeholder="المبلغ المدفوع الآن" value="0" step="0.1">
+                <select id="customerSelect"><option value="">-- اختر عميل (للدين فقط) --</option></select>
+                <button id="addCustomerBtn" class="btn-outline">➕ عميل جديد</button>
+                <button id="addSaleBtn" style="background:#2e7d32;">✅ تسجيل شراء</button>
+                <p style="font-size:12px;">💰 دفع كامل = كاش | دفع أقل = دين</p></div>
+                <div class="card"><h3>📋 ملخص سريع</h3><div id="quickStats"></div></div>
+            </div>
+            <!-- صفحة الإنتاج والمصروفات -->
+            <div id="productionExp" class="page">
+                <div class="card"><h3>🏭 الإنتاج (340 لوح)</h3><input type="date" id="prodDate"><button id="addProductionBtn">➕ إضافة دورة</button><p>📦 الإنتاج: <strong id="totalProdSpan">0</strong></p></div>
+                <div class="card"><h3>💸 المصروفات</h3><input type="text" id="expDesc" placeholder="الوصف"><input type="number" id="expAmount" placeholder="المبلغ"><input type="date" id="expDate"><button id="addExpenseBtn">➕ إضافة</button></div>
+                <div class="card"><h3>⚠️ التالف</h3><input type="number" id="damageQty" placeholder="عدد الألواح"><input type="date" id="damageDate"><button id="addDamageBtn" class="btn-warning">تسجيل تالف</button></div>
+                <div class="card"><h3>📉 قائمة المصروفات والتالف</h3><div style="overflow-x:auto;"><table id="expensesTable"><thead><tr><th>التاريخ</th><th>النوع</th><th>المبلغ</th><th></th></tr></thead><tbody></tbody></table></div></div>
+            </div>
+            <!-- صفحة العمال -->
+            <div id="workers" class="page">
+                <div class="card"><h3>⚙️ إدارة العمال</h3><div style="overflow-x:auto;"><table class="workers-table"><thead><tr><th>#</th><th>الاسم</th><th>الدورات</th><th>المستحق</th><th>السلف</th><th>الصافي</th><th>إجراءات</th></tr></thead><tbody id="workersTableBody"></tbody></table></div><button id="addWorkerBtn" class="btn-outline">➕ عامل جديد</button></div>
+                <div class="card"><h3>🔄 دورة إنتاج</h3><button id="recordCycleBtn" style="background:#e6a017;">تسجيل دورة (حضور يدوي)</button></div>
+                <div class="card"><h3>📋 ملخص العمال</h3><div id="workersSummaryTable"></div></div>
+            </div>
+            <!-- صفحة الديون -->
+            <div id="debts" class="page">
+                <div class="card"><h3>📋 الديون النشطة</h3><div style="overflow-x:auto;"><table class="debt-table"><thead><tr><th>العميل</th><th>المتبقي</th><th>آخر معاملة</th><th></th></tr></thead><tbody id="activeDebtsTable"></tbody></table></div></div>
+                <div class="card"><h3>💰 تسديد دين</h3><select id="repayCustomerSelect"></select><input type="number" id="repayAmount" placeholder="المبلغ"><button id="repayDebtBtn">تسديد</button></div>
+                <div class="card"><h3>📜 سجل عميل</h3><select id="historyCustomerSelect"></select><button id="showHistoryBtn" class="btn-outline">عرض</button><div id="customerHistory"></div></div>
+            </div>
+            <!-- صفحة التقارير -->
+            <div id="reports" class="page">
+                <div class="card"><h3>📈 تقرير شامل</h3><div id="fullReportDiv"></div>
+                <div class="flex-btns"><button id="generatePdfBtn">📄 PDF</button><button id="sharePdfBtn">📤 مشاركة</button><button id="copyReportBtn">📋 نسخ</button><button id="resetWeekBtn" class="btn-danger">🔄 أسبوع جديد</button></div></div>
+                <div class="card"><h3>📅 سجل يومي</h3><div style="overflow-x:auto;"><table id="dailyLedger"><thead><tr><th>التاريخ</th><th>البيان</th><th>الكمية</th><th>المبلغ</th><th>النوع</th></tr></thead><tbody></tbody></table></div></div>
+            </div>
+            <!-- صفحة التحليلات -->
+            <div id="analytics" class="page">
+                <div class="card"><h3>📈 المبيعات اليومية (آخر 7 أيام)</h3><canvas id="dailySalesChart"></canvas></div>
+                <div class="card"><h3>🏆 أعلى 5 ديون نشطة</h3><canvas id="topDebtsChart"></canvas></div>
+                <div class="card"><h3>💰 هيكل الإيرادات (كاش vs ديون)</h3><canvas id="revenuePieChart"></canvas></div>
+                <div class="card"><h3>🏭 الإنتاج اليومي vs المبيعات</h3><canvas id="prodVsSalesChart"></canvas></div>
+            </div>
+            <!-- صفحة الأرشيف -->
+            <div id="archive" class="page">
+                <div class="card"><h3>📅 تصفح التقارير السابقة</h3><div class="date-range"><input type="date" id="archiveStartDate"><input type="date" id="archiveEndDate"><button id="archiveFilterBtn">عرض</button></div><div id="archiveReportArea"></div><button id="exportArchiveBtn" class="btn-outline">📎 تصدير CSV</button></div>
+            </div>
+        `;
     }
     
-    // Statistics functions
-    function getTotalProduction() { return productions.reduce((s, p) => s + p.boards, 0); }
-    function getTotalSalesQty() { return customerTransactions.filter(t => t.type === "purchase").reduce((s, t) => s + (t.qty || 0), 0); }
-    function getTotalDamages() { return damages.reduce((s, d) => s + d.qty, 0); }
+    // -------------------- 4. دوال الإحصائيات (مُعدلة: getCashTotal تشمل التسديدات) --------------------
+    function getTotalProduction() { return productions.reduce((s,p)=> s + p.boards, 0); }
+    function getTotalSalesQty() { return customerTransactions.filter(t=> t.type === "purchase").reduce((s,t)=> s + (t.qty || 0), 0); }
+    function getTotalDamages() { return damages.reduce((s,d)=> s + d.qty, 0); }
     function getApproxStock() { return getTotalProduction() - getTotalSalesQty() - getTotalDamages(); }
-    function getCashTotal() { return customerTransactions.filter(t => t.type === "purchase" && t.remaining === 0).reduce((s, t) => s + t.paid, 0); }
-    function getDebtsTotal() { return customers.reduce((s, c) => s + (c.totalDebt || 0), 0); }
-    function getExpensesTotal() { return expenses.reduce((s, e) => s + e.amount, 0); }
+    function getCashTotal() {
+        let cashFromSales = customerTransactions.filter(t=> t.type === "purchase" && t.remaining === 0).reduce((s,t)=> s + t.paid, 0);
+        let repayments = customerTransactions.filter(t=> t.type === "repayment").reduce((s,t)=> s + (t.paid || 0), 0);
+        return cashFromSales + repayments;
+    }
+    function getDebtsTotal() { return customers.reduce((s,c)=> s + (c.totalDebt || 0), 0); }
+    function getExpensesTotal() { return expenses.reduce((s,e)=> s + e.amount, 0); }
     function getNetProfit() { return getCashTotal() - getExpensesTotal(); }
     
     function updateCustomersDebt() {
         let debtMap = new Map();
-        customers.forEach(c => { debtMap.set(c.id, 0); });
+        customers.forEach(c => debtMap.set(c.id, 0));
         customerTransactions.forEach(t => {
-            if (t.type === "purchase") {
-                let current = debtMap.get(t.customerId) || 0;
-                debtMap.set(t.customerId, current + t.remaining);
-            } else if (t.type === "repayment") {
-                let current = debtMap.get(t.customerId) || 0;
-                debtMap.set(t.customerId, current - t.paid);
+            if(t.type === "purchase") {
+                let curr = debtMap.get(t.customerId) || 0;
+                debtMap.set(t.customerId, curr + (t.remaining || 0));
+            } else if(t.type === "repayment") {
+                let curr = debtMap.get(t.customerId) || 0;
+                debtMap.set(t.customerId, curr - (t.paid || 0));
             }
         });
         customers.forEach(c => { c.totalDebt = Math.max(0, debtMap.get(c.id) || 0); });
     }
     
+    // -------------------- 5. حفظ وتحميل البيانات من Firestore --------------------
+    async function saveAllToFirestore() {
+        if (!currentUser) return;
+        try {
+            await db.collection("factoryData").doc("main").set({
+                customers, transactions: customerTransactions, productions, expenses, damages, workers, cyclesLog,
+                lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+            }, { merge: true });
+        } catch(e) { console.error(e); }
+    }
+    
+    async function loadAllFromFirestore() {
+        if (!currentUser) return;
+        try {
+            const doc = await db.collection("factoryData").doc("main").get();
+            if(doc.exists) {
+                const data = doc.data();
+                customers = data.customers || [];
+                customerTransactions = data.transactions || [];
+                productions = data.productions || [];
+                expenses = data.expenses || [];
+                damages = data.damages || [];
+                workers = data.workers || [];
+                cyclesLog = data.cyclesLog || [];
+            } else {
+                // بيانات افتراضية للعمال
+                workers = [
+                    { id:"w1", name:"محمد أحمد", cycles:0, totalEarned:0, advances:0 },
+                    { id:"w2", name:"خالد علي", cycles:0, totalEarned:0, advances:0 },
+                    { id:"w3", name:"سعيد جمال", cycles:0, totalEarned:0, advances:0 },
+                    { id:"w4", name:"نادر سمير", cycles:0, totalEarned:0, advances:0 }
+                ];
+            }
+            updateCustomersDebt();
+            updateUI();
+        } catch(e) { console.error(e); showToast("⚠️ خطأ في التحميل من السحابة", true); }
+    }
+    
+    // دوال التحديث وعرض البيانات (updateUI, renderWorkersTable, ...) ستأتي في الجزء الثالث
+    function updateUI() { /* سيتم إكمالها */ }
+    
+    console.log("الجزء الثاني اكتمل. أرسل 'تم' لاستلام الجزء الثالث.");
+    // -------------------- 6. دوال العمليات الأساسية (مع صلاحيات) --------------------
     function addCustomer() {
+        if(userRole !== "admin") { showToast("❌ غير مسموح، صلاحيات المدير فقط", true); return; }
         let name = prompt("اسم العميل الجديد:");
-        if (name && name.trim()) {
+        if(name && name.trim()) {
             let id = "c" + Date.now();
             customers.push({ id, name: name.trim(), totalDebt: 0 });
-            saveAll();
+            saveAllToFirestore();
             updateUI();
             showToast(`➕ تم إضافة العميل ${name}`);
         }
     }
     
     function addPurchase() {
-        let qty = parseInt(document.getElementById("saleQty").value);
-        let price = parseFloat(document.getElementById("salePrice").value);
-        let paidNow = parseFloat(document.getElementById("paidNow").value);
-        let customerId = document.getElementById("customerSelect").value;
-        if (!qty || qty <= 0 || !price || price <= 0) { alert("أدخل كمية وسعر صحيح"); return; }
-        if (isNaN(paidNow) || paidNow < 0) paidNow = 0;
+        if(userRole !== "admin") { showToast("❌ غير مسموح، صلاحيات المدير فقط", true); return; }
+        let qty = parseInt(document.getElementById("saleQty")?.value || 0);
+        let price = parseFloat(document.getElementById("salePrice")?.value || 0);
+        let paidNow = parseFloat(document.getElementById("paidNow")?.value || 0);
+        let customerId = document.getElementById("customerSelect")?.value;
+        if(!qty || qty<=0 || !price || price<=0) { alert("أدخل كمية وسعر صحيح"); return; }
+        if(isNaN(paidNow)) paidNow = 0;
         let totalAmount = qty * price;
         let remaining = totalAmount - paidNow;
-        if (remaining < 0) { alert("المبلغ المدفوع لا يمكن أن يزيد عن الإجمالي"); return; }
+        if(remaining < 0) { alert("المبلغ المدفوع لا يمكن أن يزيد عن الإجمالي"); return; }
         let today = new Date().toISOString().slice(0,10);
-        
-        if (remaining === 0) {
+        if(remaining === 0) { // كاش كامل
             customerTransactions.push({
-                id: "t" + Date.now(), customerId: "cash", customerName: "كاش", date: today,
+                id: "t"+Date.now(), customerId: "cash", customerName: "كاش", date: today,
                 type: "purchase", qty, price, totalAmount, paid: paidNow, remaining: 0, note: "كاش"
             });
-            saveAll();
-            document.getElementById("saleQty").value = "0"; document.getElementById("paidNow").value = "0";
+            saveAllToFirestore();
+            document.getElementById("saleQty").value = "0";
+            document.getElementById("paidNow").value = "0";
             updateUI();
             showToast(`✅ بيع كاش: ${qty} لوح, ${totalAmount.toFixed(2)}`);
             return;
         }
-        if (!customerId) { alert("عند الدفع الجزئي أو الدين الكامل، يجب اختيار عميل"); return; }
+        // دين جزئي أو كامل
+        if(!customerId) { alert("عند الدفع الجزئي أو الدين الكامل، يجب اختيار عميل"); return; }
         let customer = customers.find(c => c.id === customerId);
-        if (!customer) { alert("العميل غير موجود"); return; }
+        if(!customer) { alert("العميل غير موجود"); return; }
         customerTransactions.push({
-            id: "t" + Date.now(), customerId, customerName: customer.name, date: today,
+            id: "t"+Date.now(), customerId, customerName: customer.name, date: today,
             type: "purchase", qty, price, totalAmount, paid: paidNow, remaining,
-            note: paidNow === 0 ? "دين كامل" : `دفع ${paidNow} والباقي ${remaining}`
+            note: paidNow===0 ? "دين كامل" : `دفع ${paidNow} والباقي ${remaining}`
         });
         updateCustomersDebt();
-        saveAll();
-        document.getElementById("saleQty").value = "0"; document.getElementById("paidNow").value = "0";
+        saveAllToFirestore();
+        document.getElementById("saleQty").value = "0";
+        document.getElementById("paidNow").value = "0";
         updateUI();
         showToast(`✅ ${qty} لوح للعميل ${customer.name}, دفع ${paidNow}, متبقي ${remaining}`);
     }
     
     function repayDebt() {
-        let customerId = document.getElementById("repayCustomerSelect").value;
-        let amount = parseFloat(document.getElementById("repayAmount").value);
-        if (!customerId) { alert("اختر عميلاً"); return; }
-        if (isNaN(amount) || amount <= 0) { alert("أدخل مبلغاً صحيحاً"); return; }
+        if(userRole !== "admin") { showToast("❌ غير مسموح، صلاحيات المدير فقط", true); return; }
+        let customerId = document.getElementById("repayCustomerSelect")?.value;
+        let amount = parseFloat(document.getElementById("repayAmount")?.value || 0);
+        if(!customerId) { alert("اختر عميلاً"); return; }
+        if(isNaN(amount) || amount<=0) { alert("أدخل مبلغاً صحيحاً"); return; }
         let customer = customers.find(c => c.id === customerId);
-        if (!customer) return;
-        if (amount > customer.totalDebt) { alert(`المبلغ أكبر من المتبقي (${customer.totalDebt})`); return; }
+        if(!customer) return;
+        if(amount > customer.totalDebt) { alert(`المبلغ أكبر من المتبقي (${customer.totalDebt})`); return; }
+        let today = new Date().toISOString().slice(0,10);
         customerTransactions.push({
-            id: "t" + Date.now(), customerId, date: new Date().toISOString().slice(0,10),
+            id: "t"+Date.now(), customerId, date: today,
             type: "repayment", paid: amount, note: `تسديد ${amount}`
         });
         updateCustomersDebt();
-        saveAll();
+        saveAllToFirestore();
         document.getElementById("repayAmount").value = "";
         updateUI();
         showToast(`💰 تم تسديد ${amount} من حساب ${customer.name}`);
     }
     
-    function showCustomerHistory() {
-        let customerId = document.getElementById("historyCustomerSelect").value;
-        if (!customerId) { alert("اختر عميلاً"); return; }
-        let customer = customers.find(c => c.id === customerId);
-        if (!customer) return;
-        let transactions = customerTransactions.filter(t => t.customerId === customerId).sort((a,b) => b.date.localeCompare(a.date));
-        let html = `<table style="width:100%;font-size:0.7rem;"><thead><tr><th>التاريخ</th><th>النوع</th><th>الكمية</th><th>الإجمالي</th><th>المدفوع</th><th>المتبقي</th></tr></thead><tbody>`;
-        transactions.forEach(t => {
-            if (t.type === "purchase") {
-                html += `<tr><td>${t.date}</td><td>شراء</td><td>${t.qty}</td><td>${t.totalAmount.toFixed(2)}</td><td>${t.paid.toFixed(2)}</td><td class="badge-debt">${t.remaining.toFixed(2)}</td></tr>`;
-            } else {
-                html += `<tr><td>${t.date}</td><td>سداد</td><td>-</td><td>-</td><td>${t.paid.toFixed(2)}</td><td>-</td></tr>`;
+    // دوال العمال (مختصرة ولكن مع صلاحيات)
+    function addNewWorker() {
+        if(userRole !== "admin") { showToast("❌ غير مسموح", true); return; }
+        let n = prompt("اسم العامل:");
+        if(n) workers.push({ id:"w"+Date.now(), name:n, cycles:0, totalEarned:0, advances:0 });
+        saveAllToFirestore();
+        updateUI();
+    }
+    function recordGroupCycle() {
+        if(userRole !== "admin") { showToast("❌ غير مسموح", true); return; }
+        let d = new Date().toISOString().slice(0,10);
+        workers.forEach(w => {
+            if(confirm(`هل حضر ${w.name}؟`)) {
+                let wage = parseFloat(prompt(`أجره:`));
+                if(wage>0) { w.cycles++; w.totalEarned += wage; cyclesLog.push({ workerId:w.id, date:d, earned:wage }); }
             }
         });
-        html += `</tbody></table><div style="margin-top:8px;background:#e0f2fe;padding:8px;border-radius:12px;"><strong>💰 المتبقي: ${customer.totalDebt.toFixed(2)}</strong></div>`;
-        document.getElementById("customerHistory").innerHTML = html;
+        saveAllToFirestore();
+        updateUI();
+        showToast("تم تسجيل الدورة");
+    }
+    function addProduction() {
+        if(userRole !== "admin") { showToast("❌ غير مسموح", true); return; }
+        productions.push({ date: document.getElementById("prodDate").value, boards: 340 });
+        saveAllToFirestore();
+        updateUI();
+        showToast("🏭 دورة إنتاج 340 لوح");
+    }
+    function addExpense() {
+        if(userRole !== "admin") { showToast("❌ غير مسموح", true); return; }
+        let d = document.getElementById("expDesc").value, a = parseFloat(document.getElementById("expAmount").value), dt = document.getElementById("expDate").value;
+        if(d && a>0) { expenses.push({ date:dt, desc:d, amount:a }); saveAllToFirestore(); updateUI(); showToast(`💸 مصروف: ${d}`); }
+        document.getElementById("expDesc").value = ""; document.getElementById("expAmount").value = "";
+    }
+    function addDamage() {
+        if(userRole !== "admin") { showToast("❌ غير مسموح", true); return; }
+        let q = parseInt(document.getElementById("damageQty").value), dt = document.getElementById("damageDate").value;
+        if(q>0) { damages.push({ date:dt, qty:q }); saveAllToFirestore(); updateUI(); showToast(`⚠️ تالف ${q} لوح`); }
+        document.getElementById("damageQty").value = "";
+    }
+    function resetWeek() {
+        if(userRole !== "admin") { showToast("❌ غير مسموح", true); return; }
+        let remainingStock = getApproxStock();
+        if(confirm(`⚠️ سيتم حذف سجل الأسبوع الحالي. سيتم ترحيل المخزون المتبقي (${remainingStock} لوح). هل تريد المتابعة؟`)) {
+            // حفظ نسخة احتياطية
+            localStorage.setItem("factory_last_week_backup", JSON.stringify({
+                backupDate: new Date().toISOString(),
+                customers, customerTransactions, productions, expenses, damages, workers, cyclesLog
+            }));
+            customerTransactions = [];
+            expenses = [];
+            damages = [];
+            if(remainingStock > 0) {
+                productions = [{ date: new Date().toISOString().slice(0,10), boards: remainingStock, note: "رصيد من الأسبوع السابق" }];
+            } else { productions = []; }
+            cyclesLog = [];
+            workers.forEach(w => { w.cycles = 0; w.totalEarned = 0; }); // نحتفظ بالسلفيات
+            saveAllToFirestore();
+            updateUI();
+            showToast(`✅ بدأ أسبوع جديد، تم ترحيل ${remainingStock} لوح`);
+        }
+    }
+    
+    // -------------------- 7. دوال تحديث الواجهة وعرض الجداول --------------------
+    function renderWorkersTable() {
+        let tbody = document.getElementById("workersTableBody");
+        if(!tbody) return;
+        tbody.innerHTML = workers.map((w,idx) => {
+            let net = w.totalEarned - w.advances;
+            return `<tr><td>${idx+1}</td><td>${w.name}</td><td>${w.cycles}</td><td>${w.totalEarned.toFixed(2)}</td><td>${w.advances.toFixed(2)}</td><td style="color:${net>=0?'green':'red'}">${net.toFixed(2)}</td>
+            <td class="action-icons">${userRole === "admin" ? `<button class="icon-btn edit" onclick="editWorker(${idx})">تعديل</button>
+            <button class="icon-btn cycle" onclick="addCycle(${idx})">دورة</button>
+            <button class="icon-btn advance" onclick="addAdvance(${idx})">سلفة</button>
+            <button class="icon-btn" style="background:#c44536;color:white;" onclick="delWorker(${idx})">حذف</button>` : "عرض فقط"}</td></tr>`;
+        }).join("");
+        let sumHtml = `<table style="width:100%"><thead><tr><th>العامل</th><th>المستحق</th><th>السلف</th><th>الصافي</th></tr></thead><tbody>`;
+        workers.forEach(w => { let net = w.totalEarned - w.advances; sumHtml += `<tr><td>${w.name}</td><td>${w.totalEarned.toFixed(2)}</td><td>${w.advances.toFixed(2)}</td><td>${net.toFixed(2)}</td></tr>`; });
+        sumHtml += `</tbody></table><div style="margin-top:8px;background:#e0f2fe;padding:8px;border-radius:12px;"><strong>💰 إجمالي الصرف: ${workers.reduce((s,w)=>s+(w.totalEarned-w.advances),0).toFixed(2)}</strong></div>`;
+        document.getElementById("workersSummaryTable").innerHTML = sumHtml;
     }
     
     function updateCustomerSelects() {
         let options = customers.map(c => `<option value="${c.id}">${c.name} (متبقي: ${(c.totalDebt||0).toFixed(2)})</option>`).join("");
-        document.getElementById("customerSelect").innerHTML = `<option value="">-- اختر عميل --</option>` + options;
-        document.getElementById("repayCustomerSelect").innerHTML = `<option value="">اختر عميلاً</option>` + options;
-        document.getElementById("historyCustomerSelect").innerHTML = `<option value="">اختر عميلاً</option>` + options;
+        let select1 = document.getElementById("customerSelect"); if(select1) select1.innerHTML = `<option value="">-- اختر عميل --</option>` + options;
+        let select2 = document.getElementById("repayCustomerSelect"); if(select2) select2.innerHTML = `<option value="">اختر عميلاً</option>` + options;
+        let select3 = document.getElementById("historyCustomerSelect"); if(select3) select3.innerHTML = `<option value="">اختر عميلاً</option>` + options;
     }
     
     function renderActiveDebts() {
         let active = customers.filter(c => (c.totalDebt || 0) > 0);
         let tbody = document.getElementById("activeDebtsTable");
-        if (!active.length) { tbody.innerHTML = `<tr><td colspan="4">لا توجد ديون نشطة</td></tr>`; return; }
-        tbody.innerHTML = active.map(c => `<tr><td><strong>${c.name}</strong></td><td class="badge-debt">${c.totalDebt.toFixed(2)}</td><td>${c.lastTransactionDate || "-"}</td><td><button onclick="quickRepay('${c.id}')" class="btn-sm" style="background:#2e7d32;">تسديد</button></td></tr>`).join("");
+        if(!tbody) return;
+        if(!active.length) { tbody.innerHTML = `<tr><td colspan="4">لا توجد ديون نشطة</td></tr>`; return; }
+        tbody.innerHTML = active.map(c => `<tr><td><strong>${c.name}</strong></td><td class="badge-debt">${c.totalDebt.toFixed(2)}</td><td>${c.lastTransactionDate || "-"}</td><td>${userRole === "admin" ? `<button onclick="quickRepay('${c.id}')" class="btn-sm" style="background:#2e7d32;">تسديد</button>` : "-"}</td></tr>`).join("");
     }
-    window.quickRepay = (id) => { document.getElementById("repayCustomerSelect").value = id; document.getElementById("repayAmount").focus(); };
+    window.quickRepay = (id) => { if(userRole==="admin") { document.getElementById("repayCustomerSelect").value = id; document.getElementById("repayAmount").focus(); } };
     
-    function renderWorkersTable() {
-        let tbody = document.getElementById("workersTableBody");
-        tbody.innerHTML = workers.map((w, idx) => { let net = w.totalEarned - w.advances; return `<tr><td>${idx+1}</td><td>${w.name}</td><td>${w.cycles}</td><td>${w.totalEarned.toFixed(2)}</td><td>${w.advances.toFixed(2)}</td><td style="color:${net>=0?'#15803d':'#c44536'}">${net.toFixed(2)}</td><td class="action-icons"><button class="icon-btn edit" onclick="editWorker(${idx})">تعديل</button><button class="icon-btn cycle" onclick="addCycle(${idx})">دورة</button><button class="icon-btn advance" onclick="addAdvance(${idx})">سلفة</button><button class="icon-btn" style="background:#c44536;color:white;" onclick="delWorker(${idx})">حذف</button></td></tr>`; }).join("");
-        let sumHtml = `<table><thead><tr><th>العامل</th><th>المستحق</th><th>السلف</th><th>الصافي</th></tr></thead><tbody>`;
-        workers.forEach(w => { let net = w.totalEarned - w.advances; sumHtml += `<tr><td>${w.name}</td><td>${w.totalEarned.toFixed(2)}</td><td>${w.advances.toFixed(2)}</td><td>${net.toFixed(2)}</td></tr>`; });
-        sumHtml += `</tbody></table><div style="margin-top:8px;background:#e0f2fe;padding:8px;border-radius:12px;"><strong>💰 إجمالي الصرف: ${workers.reduce((s,w)=>s+(w.totalEarned-w.advances),0).toFixed(2)}</strong></div>`;
-        document.getElementById("workersSummaryTable").innerHTML = sumHtml;
-    }
-    window.editWorker = (idx) => { let n = prompt("الاسم الجديد:", workers[idx].name); if (n) workers[idx].name = n; saveAll(); updateUI(); };
-    window.addCycle = (idx) => { let w = workers[idx], val = parseFloat(prompt(`أجر ${w.name} للدورة:`)); if (val > 0) { w.cycles++; w.totalEarned += val; cyclesLog.push({ workerId: w.id, date: new Date().toISOString().slice(0,10), earned: val }); saveAll(); updateUI(); showToast(`✅ دورة ${w.name} +${val}`); } };
-    window.addAdvance = (idx) => {
-    let val = parseFloat(prompt(`سلفة للعامل ${workers[idx].name}:`));
-    if (val > 0 && !isNaN(val)) {
-        // تسجيل السلفة في المصروفات
-        expenses.push({
-            date: new Date().toISOString().slice(0,10),
-            desc: `سلفة عامل - ${workers[idx].name}`,
-            amount: val
-        });
-        
-        // تسجيل السلفة في حساب العامل
-        workers[idx].advances += val;
-        
-        saveAll();
-        updateUI();
-        showToast(`💰 سلفة ${val} للعامل ${workers[idx].name} (سُجلت في المصروفات)`);
-    }
-};
-    window.delWorker = (idx) => { if (confirm("حذف؟")) { workers.splice(idx,1); saveAll(); updateUI(); } };
-    function addNewWorker() { let n = prompt("اسم العامل:"); if (n) workers.push({ id: "w"+Date.now(), name: n, cycles: 0, totalEarned: 0, advances: 0 }); saveAll(); updateUI(); }
-    function recordGroupCycle() { let d = new Date().toISOString().slice(0,10); workers.forEach(w => { if (confirm(`هل حضر ${w.name}؟`)) { let wage = parseFloat(prompt(`أجره:`)); if (wage > 0) { w.cycles++; w.totalEarned += wage; cyclesLog.push({ workerId: w.id, date: d, earned: wage }); } } }); saveAll(); updateUI(); showToast("تم تسجيل الدورة"); }
-    function addProduction() { productions.push({ date: document.getElementById("prodDate").value, boards: 340 }); saveAll(); updateUI(); showToast("🏭 دورة إنتاج"); }
-    function addExpense() { let d=document.getElementById("expDesc").value, a=+document.getElementById("expAmount").value, dt=document.getElementById("expDate").value; if(d&&a>0){ expenses.push({date:dt,desc:d,amount:a}); saveAll(); updateUI(); document.getElementById("expDesc").value=""; document.getElementById("expAmount").value=""; showToast(`💸 مصروف:${d}`); } }
-    function addDamage() { let q=+document.getElementById("damageQty").value, dt=document.getElementById("damageDate").value; if(q>0){ damages.push({date:dt,qty:q}); saveAll(); updateUI(); document.getElementById("damageQty").value=""; showToast(`⚠️ تالف ${q}`); } }
-    function resetWeek() {
-    // حساب المخزون المتبقي من الأسبوع المنصرم
-    let remainingStock = getApproxStock();
-    
-    if(!confirm(`⚠️ هل أنت متأكد؟\n\nسيتم حذف سجل الأسبوع الحالي.\nسيتم نقل المخزون المتبقي (${remainingStock} لوح) إلى الأسبوع الجديد.\n\nالمحذوف:\n- سجل المبيعات\n- سجل الإنتاج القديم\n- سجل المصروفات\n- سجل التالف\n\nالباقي:\n- العملاء والديون\n- العمال وسلفياتهم\n- مخزون ${remainingStock} لوح\n\nهل تريد المتابعة؟`)) return;
-    
-    // حفظ نسخة احتياطية للأسبوع المنصرم
-    localStorage.setItem("factory_last_week_backup", JSON.stringify({
-        backupDate: new Date().toISOString(),
-        oldProduction: getTotalProduction(),
-        oldSales: getTotalSalesQty(),
-        oldStock: remainingStock,
-        deletedTransactions: [...customerTransactions],
-        deletedProductions: [...productions],
-        deletedExpenses: [...expenses],
-        deletedDamages: [...damages]
-    }));
-    
-    // تصفير المبيعات (معاملات الأسبوع)
-    customerTransactions = [];
-    
-    // تصفير المصروفات
-    expenses = [];
-    
-    // تصفير التالف
-    damages = [];
-    
-    // إنشاء إنتاج جديد يحتوي على المخزون المتبقي كرصيد افتتاحي
-    if (remainingStock > 0) {
-        productions = [{
-            date: new Date().toISOString().slice(0,10),
-            boards: remainingStock,
-            note: "رصيد مخزون من الأسبوع السابق"
-        }];
-    } else {
-        productions = [];
-    }
-    
-    // تصفير سجل دورات العمال (اختياري)
-    cyclesLog = [];
-    
-    // إعادة ضبط دورات العمال إلى صفر (مع الاحتفاظ بالسلفيات)
-    workers.forEach(w => {
-        w.cycles = 0;
-        w.totalEarned = 0;
-        // السلفيات (advances) تبقى كما هي
-    });
-    
-    // حفظ التغييرات
-    saveAll();
-    updateUI();
-    
-    if (remainingStock > 0) {
-        showToast(`✅ بدأ أسبوع جديد\n📦 تم ترحيل ${remainingStock} لوح مخزون متبقي`);
-    } else {
-        showToast(`✅ بدأ أسبوع جديد\n⚠️ المخزون كان صفراً، ابدأ بإنتاج جديد`);
-    }
-}
-    async function updateUI() {
+    function updateUI() {
         updateCustomersDebt();
         document.getElementById("quickStats").innerHTML = `💰 كاش:${getCashTotal().toFixed(2)} | 📋 ديون:${getDebtsTotal().toFixed(2)} | 🧊 مخزون:${getApproxStock()}`;
         document.getElementById("totalProdSpan").innerText = getTotalProduction();
-        let expAll = [...expenses.map((e,i)=>({...e,i,isDamage:false})), ...damages.map((d,i)=>({date:d.date,desc:`تالف ${d.qty} لوح`,amount:0,i,isDamage:true}))];
+        // جدول المصروفات والتالف
+        let expAll = [...expenses.map((e,i)=>({...e,i,isDamage:false})), ...damages.map((d,i)=>({date:d.date, desc:`تالف ${d.qty} لوح`, amount:0, i, isDamage:true}))];
         expAll.sort((a,b)=>b.date.localeCompare(a.date));
-        document.querySelector("#expensesTable tbody").innerHTML = expAll.map(e => e.isDamage? `<tr><td>${e.date}</td><td>🔴 ${e.desc}</td><td>0</td><td><button onclick="delDamage(${e.i})">X</button></td></tr>` : `<tr><td>${e.date}</td><td>${e.desc}</td><td>${e.amount.toFixed(2)}</td><td><button onclick="delExpense(${e.i})">X</button></td></tr>`).join("");
+        let expTbody = document.querySelector("#expensesTable tbody");
+        if(expTbody) expTbody.innerHTML = expAll.map(e => e.isDamage ? `<tr><td>${e.date}</td><td>🔴 ${e.desc}</td><td>0</td><td><button onclick="delDamage(${e.i})">X</button></td></tr>` : `<tr><td>${e.date}</td><td>${e.desc}</td><td>${e.amount.toFixed(2)}</td><td><button onclick="delExpense(${e.i})">X</button></td></tr>`).join("");
         renderWorkersTable();
         updateCustomerSelects();
         renderActiveDebts();
+        // التقرير المالي
         let cash=getCashTotal(), debts=getDebtsTotal(), expTot=getExpensesTotal(), net=cash-expTot, stock=getApproxStock();
-        document.getElementById("fullReportDiv").innerHTML = `<div>📦 إنتاج:${getTotalProduction()}</div><div>🧊 مبيعات:${getTotalSalesQty()}</div><div>⚠️ تالف:${getTotalDamages()}</div><div>📦 مخزون:${stock}<hr><div>💰 كاش:${cash.toFixed(2)}</div><div>📋 ديون:${debts.toFixed(2)}</div><div>💸 مصروفات:${expTot.toFixed(2)}</div><div style="color:#15803d;">✅ صافي الربح:${net.toFixed(2)}</div>`;
+        let reportDiv = document.getElementById("fullReportDiv");
+        if(reportDiv) reportDiv.innerHTML = `<div>📦 إنتاج:${getTotalProduction()}</div><div>🧊 مبيعات:${getTotalSalesQty()}</div><div>⚠️ تالف:${getTotalDamages()}</div><div>📦 مخزون:${stock}<hr><div>💰 كاش:${cash.toFixed(2)}</div><div>📋 ديون:${debts.toFixed(2)}</div><div>💸 مصروفات:${expTot.toFixed(2)}</div><div style="color:#15803d;">✅ صافي الربح:${net.toFixed(2)}</div>`;
+        // السجل اليومي
         let ledger = [];
-        customerTransactions.filter(t=>t.type==="purchase").forEach(s=>ledger.push({date:s.date,desc:`بيع ${s.qty} لوح`,qty:s.qty,amount:s.paid,type:s.remaining===0?"كاش":"دين"}));
-        productions.forEach(p=>ledger.push({date:p.date,desc:`إنتاج ${p.boards}`,qty:p.boards,amount:0,type:"إنتاج"}));
-        expenses.forEach(e=>ledger.push({date:e.date,desc:`مصروف:${e.desc}`,qty:"-",amount:e.amount,type:"مصروف"}));
-        damages.forEach(d=>ledger.push({date:d.date,desc:`تالف ${d.qty}`,qty:d.qty,amount:0,type:"تالف"}));
+        customerTransactions.filter(t=>t.type==="purchase").forEach(s=>ledger.push({date:s.date, desc:`بيع ${s.qty} لوح`, qty:s.qty, amount:s.paid, type:s.remaining===0?"كاش":"دين"}));
+        productions.forEach(p=>ledger.push({date:p.date, desc:`إنتاج ${p.boards}`, qty:p.boards, amount:0, type:"إنتاج"}));
+        expenses.forEach(e=>ledger.push({date:e.date, desc:`مصروف: ${e.desc}`, qty:"-", amount:e.amount, type:"مصروف"}));
+        damages.forEach(d=>ledger.push({date:d.date, desc:`تالف ${d.qty}`, qty:d.qty, amount:0, type:"تالف"}));
         ledger.sort((a,b)=>a.date.localeCompare(b.date));
-        document.querySelector("#dailyLedger tbody").innerHTML = ledger.map(l=>`<tr><td>${l.date}</td><td>${l.desc}</td><td>${l.qty}</td><td>${l.amount===0?"-":l.amount.toFixed(2)}</td><td>${l.type}</td></tr>`).join("");
+        let ledgerTbody = document.querySelector("#dailyLedger tbody");
+        if(ledgerTbody) ledgerTbody.innerHTML = ledger.map(l=>`<tr><td>${l.date}</td><td>${l.desc}</td><td>${l.qty}</td><td>${l.amount===0?"-":l.amount.toFixed(2)}</td><td>${l.type}</td></tr>`).join("");
+        // تحديث الرسوم البيانية (سيتم في الجزء الرابع)
+        if(window.updateCharts) window.updateCharts();
     }
-    window.delExpense = (i) => { expenses.splice(i,1); saveAll(); updateUI(); };
-    window.delDamage = (i) => { damages.splice(i,1); saveAll(); updateUI(); };
     
-    document.getElementById("paidNow").addEventListener("input", function() {
-        let qty = parseInt(document.getElementById("saleQty").value);
-        let price = parseFloat(document.getElementById("salePrice").value);
-        let paidNow = parseFloat(this.value);
-        let total = qty * price;
-        let remaining = total - paidNow;
-        let customerSelect = document.getElementById("customerSelect");
-        if (remaining > 0 && !customerSelect.value) {
-            customerSelect.classList.add("customer-required");
-        } else { customerSelect.classList.remove("customer-required"); }
-    });
+    // دوال الحذف الأساسية (مع صلاحيات)
+    window.delExpense = (i) => { if(userRole==="admin") { expenses.splice(i,1); saveAllToFirestore(); updateUI(); } };
+    window.delDamage = (i) => { if(userRole==="admin") { damages.splice(i,1); saveAllToFirestore(); updateUI(); } };
+    window.editWorker = (idx) => { if(userRole==="admin") { let n = prompt("الاسم الجديد:", workers[idx].name); if(n) workers[idx].name = n; saveAllToFirestore(); updateUI(); } };
+    window.addCycle = (idx) => { if(userRole==="admin") { let w=workers[idx], val=parseFloat(prompt(`أجر ${w.name} للدورة:`)); if(val>0){ w.cycles++; w.totalEarned+=val; cyclesLog.push({workerId:w.id, date:new Date().toISOString().slice(0,10), earned:val}); saveAllToFirestore(); updateUI(); showToast(`✅ دورة ${w.name} +${val}`); } } };
+    window.addAdvance = (idx) => { if(userRole==="admin") { let val=parseFloat(prompt(`سلفة للعامل ${workers[idx].name}:`)); if(val>0){ workers[idx].advances+=val; expenses.push({date:new Date().toISOString().slice(0,10), desc:`سلفة عامل - ${workers[idx].name}`, amount:val}); saveAllToFirestore(); updateUI(); showToast(`💰 سلفة ${val}`); } } };
+    window.delWorker = (idx) => { if(userRole==="admin" && confirm("حذف العامل؟")) { workers.splice(idx,1); saveAllToFirestore(); updateUI(); } };
     
-    async function generatePDF(shareMode=false){
-    showToast("⏳ جاري تجهيز التقرير...");
-    try{
-        const captureDiv = document.getElementById("pdfCaptureArea");
-        const captureContainer = document.getElementById("pdfCaptureContainer");
-        const contentDiv = document.getElementById("captureContent");
-        
-        // بناء السجل اليومي
-        let ledgerRows = "";
-        let ledger = [];
-        customerTransactions.filter(t=>t.type==="purchase").forEach(s=>ledger.push({date:s.date,desc:`بيع ${s.qty} لوح`,qty:s.qty,amount:s.paid,type:s.remaining===0?"كاش":"دين"}));
-        productions.forEach(p=>ledger.push({date:p.date,desc:`إنتاج ${p.boards} لوح`,qty:p.boards,amount:0,type:"إنتاج"}));
-        expenses.forEach(e=>ledger.push({date:e.date,desc:`مصروف: ${e.desc}`,qty:"-",amount:e.amount,type:"مصروف"}));
-        damages.forEach(d=>ledger.push({date:d.date,desc:`تالف ${d.qty} لوح`,qty:d.qty,amount:0,type:"تالف"}));
-        ledger.sort((a,b)=>a.date.localeCompare(b.date));
-        
-        ledger.forEach(l => {
-            ledgerRows += `<tr>
-                <td style="border:1px solid #ccc;padding:6px;">${l.date}</td>
-                <td style="border:1px solid #ccc;padding:6px;">${l.desc}</td>
-                <td style="border:1px solid #ccc;padding:6px;">${l.qty}</td>
-                <td style="border:1px solid #ccc;padding:6px;">${l.amount === 0 ? "-" : l.amount.toFixed(2)}</td>
-                <td style="border:1px solid #ccc;padding:6px;">${l.type}</td>
-            </tr>`;
+    console.log("الجزء الثالث اكتمل. أرسل 'تم' لاستلام الجزء الرابع (الرسوم البيانية، الأرشيف، وتكامل الصلاحيات).");
+        // -------------------- 8. الرسوم البيانية (Chart.js) --------------------
+    let charts = {};
+    function initCharts() {
+        const ctx1 = document.getElementById('dailySalesChart')?.getContext('2d');
+        const ctx2 = document.getElementById('topDebtsChart')?.getContext('2d');
+        const ctx3 = document.getElementById('revenuePieChart')?.getContext('2d');
+        const ctx4 = document.getElementById('prodVsSalesChart')?.getContext('2d');
+        if(ctx1) charts.dailySales = new Chart(ctx1, { type: 'line', data: { labels: [], datasets: [{ label: 'المبيعات (قيمة)', data: [], borderColor: '#1e6f5c', tension: 0.2 }] } });
+        if(ctx2) charts.topDebts = new Chart(ctx2, { type: 'bar', data: { labels: [], datasets: [{ label: 'المتبقي (دين)', data: [], backgroundColor: '#c44536' }] } });
+        if(ctx3) charts.revenuePie = new Chart(ctx3, { type: 'pie', data: { labels: ['كاش', 'ديون مستحقة'], datasets: [{ data: [0,0], backgroundColor: ['#2e7d32', '#e6a017'] }] } });
+        if(ctx4) charts.prodVsSales = new Chart(ctx4, { type: 'bar', data: { labels: [], datasets: [{ label: 'الإنتاج', data: [], backgroundColor: '#1e4660' }, { label: 'المبيعات', data: [], backgroundColor: '#e6a017' }] } });
+    }
+    function updateCharts() {
+        if(!charts.dailySales) return;
+        // المبيعات اليومية لآخر 7 أيام
+        let last7Days = [...Array(7)].map((_,i) => { let d = new Date(); d.setDate(d.getDate()-i); return d.toISOString().slice(0,10); }).reverse();
+        let dailySalesData = last7Days.map(date => customerTransactions.filter(t=> t.type==="purchase" && t.date===date).reduce((s,t)=> s + t.paid,0));
+        charts.dailySales.data.labels = last7Days;
+        charts.dailySales.data.datasets[0].data = dailySalesData;
+        charts.dailySales.update();
+        // أعلى 5 ديون
+        let top5 = [...customers].sort((a,b)=> (b.totalDebt||0) - (a.totalDebt||0)).slice(0,5);
+        charts.topDebts.data.labels = top5.map(c=> c.name);
+        charts.topDebts.data.datasets[0].data = top5.map(c=> c.totalDebt);
+        charts.topDebts.update();
+        // هيكل الإيرادات
+        let cash = getCashTotal(), debts = getDebtsTotal();
+        charts.revenuePie.data.datasets[0].data = [cash, debts];
+        charts.revenuePie.update();
+        // الإنتاج vs المبيعات لآخر 7 أيام
+        let prodData = last7Days.map(date => productions.filter(p=> p.date===date).reduce((s,p)=> s + p.boards,0));
+        let salesQtyData = last7Days.map(date => customerTransactions.filter(t=> t.type==="purchase" && t.date===date).reduce((s,t)=> s + t.qty,0));
+        charts.prodVsSales.data.labels = last7Days;
+        charts.prodVsSales.data.datasets[0].data = prodData;
+        charts.prodVsSales.data.datasets[1].data = salesQtyData;
+        charts.prodVsSales.update();
+    }
+    window.updateCharts = updateCharts;
+    
+    // -------------------- 9. دوال التقارير (PDF، مشاركة، نسخ، أرشيف) --------------------
+    async function generatePDF(shareMode=false) {
+        showToast("⏳ جاري تجهيز التقرير...");
+        try {
+            const captureDiv = document.getElementById("pdfCaptureArea") || (()=>{ let d=document.createElement('div'); d.id='pdfCaptureArea'; d.style.position='fixed'; d.style.top='-9999px'; document.body.appendChild(d); return d; })();
+            const contentDiv = document.getElementById("captureContent") || (()=>{ let d=document.createElement('div'); d.id='captureContent'; captureDiv.appendChild(d); return d; })();
+            let html = `<div style="font-family:'Cairo',sans-serif;padding:10px;"><h2 style="color:#0b3b5f;">🏭 تقرير مصنع الثلج</h2><p>${new Date().toLocaleDateString('ar-EG')}</p>
+            <h3>📊 الملخص المالي</h3><table style="width:100%;border:1px solid #ccc;"><tr><th>البند</th><th>القيمة</th></tr>
+            <tr><td>📦 الإنتاج</td><td>${getTotalProduction()} لوح</td></tr><tr><td>🧊 المبيعات</td><td>${getTotalSalesQty()} لوح</td></tr>
+            <tr><td>⚠️ التالف</td><td>${getTotalDamages()} لوح</td></tr><tr><td>📦 المخزون</td><td>${getApproxStock()} لوح</td></tr>
+            <tr style="background:#e0f2fe;"><td>💰 الكاش</td><td>${getCashTotal().toFixed(2)}</td></tr>
+            <tr style="background:#fff3e0;"><td>📋 الديون</td><td>${getDebtsTotal().toFixed(2)}</td></tr>
+            <tr style="background:#fee2e2;"><td>💸 المصروفات</td><td>${getExpensesTotal().toFixed(2)}</td></tr>
+            <tr style="background:#dff9e6;"><td>✅ صافي الربح</td><td>${getNetProfit().toFixed(2)}</td></tr></table>
+            <h3>📋 الديون النشطة</h3><table style="width:100%;border:1px solid #ccc;"><tr><th>العميل</th><th>المتبقي</th></tr>${customers.filter(c=>c.totalDebt>0).map(c=>`<tr><td>${c.name}</td><td>${c.totalDebt.toFixed(2)}</td></tr>`).join('')}</table>
+            <h3>📅 السجل اليومي</h3><table style="width:100%;border:1px solid #ccc;"><tr><th>التاريخ</th><th>البيان</th><th>الكمية</th><th>المبلغ</th><th>النوع</th></tr>${(()=>{ let rows=''; [...customerTransactions.filter(t=>t.type==='purchase'), ...productions, ...expenses, ...damages].sort((a,b)=>(a.date||'').localeCompare(b.date||'')).forEach(item=>{ if(item.qty!==undefined) rows+=`<tr><td>${item.date}</td><td>بيع ${item.qty} لوح</td><td>${item.qty}</td><td>${item.paid||0}</td><td>${item.remaining===0?'كاش':'دين'}</td></tr>`; else if(item.boards) rows+=`<tr><td>${item.date}</td><td>إنتاج ${item.boards}</td><td>${item.boards}</td><td>-</td><td>إنتاج</td></tr>`; else if(item.desc) rows+=`<tr><td>${item.date}</td><td>مصروف: ${item.desc}</td><td>-</td><td>${item.amount}</td><td>مصروف</td></tr>`; else if(item.qty) rows+=`<tr><td>${item.date}</td><td>تالف ${item.qty}</td><td>${item.qty}</td><td>-</td><td>تالف</td></tr>`; }); return rows; })()}</table></div>`;
+            contentDiv.innerHTML = html;
+            await new Promise(r=>setTimeout(r,200));
+            const canvas = await html2canvas(captureDiv, { scale: 2, backgroundColor: "#ffffff" });
+            const imgData = canvas.toDataURL("image/png");
+            const { jsPDF } = window.jspdf;
+            const imgWidth = 210, imgHeight = (canvas.height * imgWidth) / canvas.width;
+            let pdf = new jsPDF({ unit: "mm", format: "a4" });
+            pdf.addImage(imgData, "PNG", 0, 0, imgWidth, imgHeight);
+            if(shareMode && navigator.share) {
+                const blob = pdf.output("blob");
+                await navigator.share({ title: "تقرير المصنع", files: [new File([blob], `report_${Date.now()}.pdf`, { type: "application/pdf" })] });
+                showToast("📤 تمت المشاركة");
+            } else {
+                pdf.save(`report_${Date.now()}.pdf`);
+                showToast("📄 تم حفظ التقرير");
+            }
+        } catch(e) { console.error(e); showToast("❌ خطأ في التقرير", true); }
+    }
+    function copyReport() { let t=`تقرير المصنع\nكاش:${getCashTotal().toFixed(2)}\nديون:${getDebtsTotal().toFixed(2)}\nمصروفات:${getExpensesTotal().toFixed(2)}\nصافي الربح:${getNetProfit().toFixed(2)}\nالمخزون:${getApproxStock()}`; navigator.clipboard.writeText(t); showToast("📋 تم النسخ"); }
+    
+    // أرشيف
+    function showArchive() {
+        let start = document.getElementById("archiveStartDate").value;
+        let end = document.getElementById("archiveEndDate").value;
+        if(!start || !end) { alert("اختر تاريخ البداية والنهاية"); return; }
+        let filtered = customerTransactions.filter(t => t.date >= start && t.date <= end);
+        let html = `<table style="width:100%;"><thead><tr><th>التاريخ</th><th>العميل</th><th>الكمية</th><th>المدفوع</th><th>المتبقي</th></tr></thead><tbody>`;
+        filtered.forEach(t => { if(t.type==="purchase") html += `<tr><td>${t.date}</td><td>${t.customerName}</td><td>${t.qty}</td><td>${t.paid}</td><td>${t.remaining}</td></tr>`; });
+        html += `</tbody></table>`;
+        document.getElementById("archiveReportArea").innerHTML = html;
+    }
+    function exportToCSV() {
+        let start = document.getElementById("archiveStartDate").value;
+        let end = document.getElementById("archiveEndDate").value;
+        let filtered = customerTransactions.filter(t => t.date >= start && t.date <= end && t.type==="purchase");
+        let csvRows = [["التاريخ","العميل","الكمية","المدفوع","المتبقي"]];
+        filtered.forEach(t => csvRows.push([t.date, t.customerName, t.qty, t.paid, t.remaining]));
+        let csv = csvRows.map(row => row.join(",")).join("\n");
+        let blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+        let link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = `archive_${start}_to_${end}.csv`;
+        link.click();
+        showToast("📎 تم التصدير إلى CSV");
+    }
+    
+    // -------------------- 10. نظام الصلاحيات والتسجيل --------------------
+    async function handleLogin(email, password, isGuest = false) {
+        if(isGuest) {
+            currentUser = { uid: "guest", email: "guest" };
+            userRole = "guest";
+            document.getElementById("authScreen").style.display = "none";
+            document.getElementById("mainContainer").style.display = "block";
+            document.querySelector("header").style.display = "flex";
+            document.querySelector(".tabs").style.display = "flex";
+            showToast("👁️ دخول كزائر: يمكنك مشاهدة التحليلات والتقارير العامة فقط");
+            // تعطيل التبويبات ذات الصلاحية
+            document.querySelectorAll(".tab-btn").forEach(btn => {
+                if(["sales","productionExp","workers","debts"].includes(btn.dataset.page)) btn.style.display = "none";
+                else btn.style.display = "block";
+            });
+            updateUI();
+            initCharts();
+            updateCharts();
+            return;
+        }
+        try {
+            const userCred = await auth.signInWithEmailAndPassword(email, password);
+            currentUser = userCred.user;
+            // تحديد الدور: إذا كان البريد هو admin@icefactory.com (مثال) أو أول مستخدم مسجل
+            const isAdmin = (email === "admin@icefactory.com"); // يمكنك تغيير هذا إلى قائمة في Firestore
+            userRole = isAdmin ? "admin" : "viewer";
+            document.getElementById("authScreen").style.display = "none";
+            document.getElementById("mainContainer").style.display = "block";
+            document.querySelector("header").style.display = "flex";
+            document.querySelector(".tabs").style.display = "flex";
+            if(userRole === "admin") showToast("🔐 مرحباً أيها المدير، لديك صلاحيات كاملة");
+            else showToast("👤 مرحباً، لديك صلاحيات مشاهدة فقط (لا تعديل)");
+            await loadAllFromFirestore();
+            updateUI();
+            initCharts();
+            updateCharts();
+        } catch(e) {
+            if(e.code === "auth/user-not-found") {
+                // إنشاء مستخدم جديد (صلاحيات viewer)
+                try {
+                    const newUser = await auth.createUserWithEmailAndPassword(email, password);
+                    currentUser = newUser.user;
+                    userRole = "viewer";
+                    document.getElementById("authScreen").style.display = "none";
+                    document.getElementById("mainContainer").style.display = "block";
+                    document.querySelector("header").style.display = "flex";
+                    document.querySelector(".tabs").style.display = "flex";
+                    showToast("📝 تم إنشاء حسابك، صلاحيات مشاهدة فقط");
+                    await loadAllFromFirestore();
+                    updateUI();
+                    initCharts();
+                    updateCharts();
+                } catch(createErr) { showToast("❌ فشل إنشاء الحساب", true); }
+            } else { showToast("❌ خطأ في الدخول: " + e.message, true); }
+        }
+    }
+    function logout() {
+        auth.signOut();
+        currentUser = null;
+        userRole = "guest";
+        document.getElementById("authScreen").style.display = "block";
+        document.getElementById("mainContainer").style.display = "none";
+        document.querySelector("header").style.display = "none";
+        document.querySelector(".tabs").style.display = "none";
+        showToast("🔓 تم تسجيل الخروج");
+    }
+    
+    // -------------------- 11. ربط الأحداث وتشغيل التطبيق --------------------
+    window.onload = () => {
+        buildPages();
+        document.getElementById("authScreen").style.display = "block";
+        document.getElementById("mainContainer").style.display = "none";
+        document.querySelector("header").style.display = "none";
+        document.querySelector(".tabs").style.display = "none";
+        auth.onAuthStateChanged(async (user) => {
+            if(user) {
+                currentUser = user;
+                // معرفة الدور (يمكن تحسينه بحفظ دور في Firestore)
+                const isAdmin = (user.email === "admin@icefactory.com");
+                userRole = isAdmin ? "admin" : "viewer";
+                document.getElementById("authScreen").style.display = "none";
+                document.getElementById("mainContainer").style.display = "block";
+                document.querySelector("header").style.display = "flex";
+                document.querySelector(".tabs").style.display = "flex";
+                if(userRole === "admin") showToast("🔐 مرحباً أيها المدير");
+                else showToast("👤 مرحباً، صلاحيات مشاهدة");
+                await loadAllFromFirestore();
+                updateUI();
+                initCharts();
+                updateCharts();
+                // إخفاء التبويبات للمستخدم العادي
+                if(userRole !== "admin") {
+                    document.querySelectorAll(".tab-btn").forEach(btn => {
+                        if(["sales","productionExp","workers","debts"].includes(btn.dataset.page)) btn.style.display = "none";
+                    });
+                }
+            } else {
+                // لا يوجد مستخدم، نعرض شاشة الدخول
+                document.getElementById("authScreen").style.display = "block";
+                document.getElementById("mainContainer").style.display = "none";
+                document.querySelector("header").style.display = "none";
+                document.querySelector(".tabs").style.display = "none";
+            }
         });
-        
-        let html = `<div style="font-family:'Cairo',sans-serif;padding:10px;">
-            <div style="text-align:center;margin-bottom:20px;">
-                <h2 style="color:#0b3b5f;">🏭 تقرير مصنع الثلج</h2>
-                <p>${new Date().toLocaleDateString('ar-EG')}</p>
-            </div>
-            
-            <!-- القسم الأول: الملخص المالي -->
-            <h3>📊 الملخص المالي</h3>
-            <table style="width:100%;border-collapse:collapse;border:1px solid #ccc;margin-bottom:20px;">
-                <tr style="background:#e2e8f0;"><th style="padding:8px;">البند</th><th style="padding:8px;">القيمة</th></tr>
-                <tr><td style="padding:6px;">📦 إجمالي الإنتاج</td><td style="padding:6px;">${getTotalProduction()} لوح</td></tr>
-                <tr><td style="padding:6px;">🧊 إجمالي المبيعات</td><td style="padding:6px;">${getTotalSalesQty()} لوح</td></tr>
-                <tr><td style="padding:6px;">⚠️ إجمالي التالف</td><td style="padding:6px;">${getTotalDamages()} لوح</td></tr>
-                <tr><td style="padding:6px;">📦 المخزون التقريبي</td><td style="padding:6px;">${getApproxStock()} لوح</td></tr>
-                <tr style="background:#e0f2fe;"><td style="padding:6px;">💰 إجمالي الكاش</td><td style="padding:6px;">${getCashTotal().toFixed(2)}</td></tr>
-                <tr style="background:#fff3e0;"><td style="padding:6px;">📋 إجمالي الديون</td><td style="padding:6px;">${getDebtsTotal().toFixed(2)}</td></tr>
-                <tr style="background:#fee2e2;"><td style="padding:6px;">💸 إجمالي المصروفات</td><td style="padding:6px;">${getExpensesTotal().toFixed(2)}</td></tr>
-                <tr style="background:#dff9e6;"><td style="padding:6px;">✅ صافي الربح</td><td style="padding:6px; color:#15803d; font-weight:bold;">${getNetProfit().toFixed(2)}</td></tr>
-            </table>
-            
-            <!-- القسم الثاني: الديون النشطة -->
-            <h3>📋 الديون النشطة</h3>
-            <table style="width:100%;border-collapse:collapse;border:1px solid #ccc;margin-bottom:20px;">
-                <tr style="background:#e2e8f0;"><th style="padding:8px;">العميل</th><th style="padding:8px;">المتبقي</th></tr>
-                ${customers.filter(c=>c.totalDebt>0).map(c=>`<tr><td style="padding:6px;">${c.name}</td><td style="padding:6px; background:#fee2e2;">${c.totalDebt.toFixed(2)}</td></tr>`).join("")}
-                ${customers.filter(c=>c.totalDebt>0).length === 0 ? '<tr><td colspan="2" style="padding:6px; text-align:center;">لا توجد ديون نشطة</td></tr>' : ''}
-            </table>
-            
-            <!-- القسم الثالث: السجل اليومي (الجديد) -->
-            <h3>📅 السجل اليومي (جميع المعاملات)</h3>
-            <table style="width:100%;border-collapse:collapse;border:1px solid #ccc;">
-                <tr style="background:#e2e8f0;">
-                    <th style="padding:8px;">التاريخ</th>
-                    <th style="padding:8px;">البيان</th>
-                    <th style="padding:8px;">الكمية</th>
-                    <th style="padding:8px;">المبلغ</th>
-                    <th style="padding:8px;">النوع</th>
-                </tr>
-                ${ledgerRows}
-                ${ledger.length === 0 ? '<tr><td colspan="5" style="padding:6px; text-align:center;">لا توجد معاملات</td></tr>' : ''}
-            </table>
-        </div>`;
-        
-        contentDiv.innerHTML = html;
-        captureContainer.style.position = "fixed";
-        captureContainer.style.top = "0";
-        captureContainer.style.left = "0";
-        captureContainer.style.width = "750px";
-        captureContainer.style.zIndex = "-1";
-        captureContainer.style.opacity = "0";
-        
-        await new Promise(r => setTimeout(r, 200));
-        
-        const canvas = await html2canvas(captureDiv, { scale: 2, backgroundColor: "#ffffff", logging: false });
-        const imgData = canvas.toDataURL("image/png");
-        const { jsPDF } = window.jspdf;
-        const imgWidth = 210;
-        const imgHeight = (canvas.height * imgWidth) / canvas.width;
-        let pdf = new jsPDF({ unit: "mm", format: "a4" });
-        
-        // إضافة الصفحات بشكل ديناميكي إذا كان المحتوى طويلاً
-        let heightLeft = imgHeight;
-        let position = 0;
-        pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
-        heightLeft -= 297;
-        
-        while (heightLeft > 0) {
-            position = heightLeft - imgHeight;
-            pdf.addPage();
-            pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
-            heightLeft -= 297;
-        }
-        
-        captureContainer.style.top = "-9999px";
-        
-        if (shareMode && navigator.share) {
-            const blob = pdf.output("blob");
-            const file = new File([blob], `report_${Date.now()}.pdf`, { type: "application/pdf" });
-            await navigator.share({ title: "تقرير المصنع", files: [file] });
-            showToast("📤 تمت المشاركة");
-        } else {
-            pdf.save(`report_${Date.now()}.pdf`);
-            showToast("📄 تم حفظ التقرير الكامل");
-        }
-    } catch(e){ 
-        console.error(e); 
-        showToast("❌ حدث خطأ في إنشاء التقرير", true); 
-    }
-}
-    function copyReport(){ let t=`تقرير المصنع\nكاش:${getCashTotal().toFixed(2)}\nديون:${getDebtsTotal().toFixed(2)}\nمصروفات:${getExpensesTotal().toFixed(2)}\nصافي الربح:${getNetProfit().toFixed(2)}\nالمخزون:${getApproxStock()}`; navigator.clipboard.writeText(t); showToast("📋 تم النسخ"); }
-    
-    // Event Listeners
-    document.getElementById("addSaleBtn").onclick = addPurchase;
-    document.getElementById("addCustomerBtn").onclick = addCustomer;
-    document.getElementById("repayDebtBtn").onclick = repayDebt;
-    document.getElementById("showHistoryBtn").onclick = showCustomerHistory;
-    document.getElementById("addProductionBtn").onclick = addProduction;
-    document.getElementById("addExpenseBtn").onclick = addExpense;
-    document.getElementById("addDamageBtn").onclick = addDamage;
-    document.getElementById("recordCycleBtn").onclick = recordGroupCycle;
-    document.getElementById("addWorkerBtn").onclick = addNewWorker;
-    document.getElementById("generatePdfBtn").onclick = () => generatePDF(false);
-    document.getElementById("sharePdfBtn").onclick = () => generatePDF(true);
-    document.getElementById("copyReportBtn").onclick = copyReport;
-    document.getElementById("resetWeekBtn").onclick = resetWeek;
-    document.getElementById("incQty1").onclick = () => { let i = document.getElementById("saleQty"); i.value = (+i.value || 0) + 1; };
-    document.getElementById("incQty5").onclick = () => { let i = document.getElementById("saleQty"); i.value = (+i.value || 0) + 5; };
-    document.getElementById("incQty10").onclick = () => { let i = document.getElementById("saleQty"); i.value = (+i.value || 0) + 10; };
-    document.getElementById("resetQtyBtn").onclick = () => { document.getElementById("saleQty").value = 0; };
-    document.querySelectorAll(".tab-btn").forEach(btn => { btn.onclick = () => { document.querySelectorAll(".tab-btn").forEach(b=>b.classList.remove("active")); btn.classList.add("active"); document.querySelectorAll(".page").forEach(p=>p.classList.remove("active-page")); document.getElementById(btn.dataset.page).classList.add("active-page"); }; });
-    
-    // Initialize
-    loadAll();
-</script>
+        // إضافة مستمعي الأحداث
+        document.getElementById("loginBtn").onclick = () => handleLogin(document.getElementById("loginEmail").value, document.getElementById("loginPassword").value, false);
+        document.getElementById("guestBtn").onclick = () => handleLogin("", "", true);
+        document.getElementById("addSaleBtn").onclick = addPurchase;
+        document.getElementById("addCustomerBtn").onclick = addCustomer;
+        document.getElementById("repayDebtBtn").onclick = repayDebt;
+        document.getElementById("addProductionBtn").onclick = addProduction;
+        document.getElementById("addExpenseBtn").onclick = addExpense;
+        document.getElementById("addDamageBtn").onclick = addDamage;
+        document.getElementById("recordCycleBtn").onclick = recordGroupCycle;
+        document.getElementById("addWorkerBtn").onclick = addNewWorker;
+        document.getElementById("generatePdfBtn").onclick = () => generatePDF(false);
+        document.getElementById("sharePdfBtn").onclick = () => generatePDF(true);
+        document.getElementById("copyReportBtn").onclick = copyReport;
+        document.getElementById("resetWeekBtn").onclick = resetWeek;
+        document.getElementById("archiveFilterBtn").onclick = showArchive;
+        document.getElementById("exportArchiveBtn").onclick = exportToCSV;
+        // أزرار الكمية
+        document.getElementById("incQty1").onclick = () => { let i = document.getElementById("saleQty"); i.value = (+i.value||0)+1; };
+        document.getElementById("incQty5").onclick = () => { let i = document.getElementById("saleQty"); i.value = (+i.value||0)+5; };
+        document.getElementById("incQty10").onclick = () => { let i = document.getElementById("saleQty"); i.value = (+i.value||0)+10; };
+        document.getElementById("resetQtyBtn").onclick = () => { document.getElementById("saleQty").value = 0; };
+        // التنقل بين التبويبات
+        document.querySelectorAll(".tab-btn").forEach(btn => {
+            btn.onclick = () => {
+                document.querySelectorAll(".tab-btn").forEach(b=>b.classList.remove("active"));
+                btn.classList.add("active");
+                document.querySelectorAll(".page").forEach(p=>p.classList.remove("active-page"));
+                document.getElementById(btn.dataset.page).classList.add("active-page");
+                if(btn.dataset.page === "analytics" && charts.dailySales) updateCharts();
+            };
+        });
+        // عند تغيير المبلغ المدفوع، تلوين حقل العميل
+        document.getElementById("paidNow").addEventListener("input", function() {
+            let qty = +document.getElementById("saleQty").value, price = +document.getElementById("salePrice").value, paid = +this.value;
+            let remaining = (qty*price) - paid;
+            let custSel = document.getElementById("customerSelect");
+            if(remaining > 0 && !custSel.value) custSel.classList.add("customer-required");
+            else custSel.classList.remove("customer-required");
+        });
+        // زر تسجيل الخروج (يمكن إضافته في header)
+        let logoutBtn = document.createElement("button");
+        logoutBtn.innerText = "🚪 خروج";
+        logoutBtn.className = "logout-btn";
+        logoutBtn.onclick = logout;
+        document.querySelector(".user-info").appendChild(logoutBtn);
+        document.querySelector(".user-info").innerHTML = `<span>${currentUser ? (userRole==="admin"? "👑 مدير" : "👤 مستخدم") : "زائر"}</span>`;
+    };
+    console.log("الجزء الرابع والأخير تم بنجاح. التطبيق جاهز للتشغيل.");
+    </script>
 </body>
 </html>
