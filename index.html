@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+    <title>نظام إدارة مصنع الثلج</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+</head>
+<body>
+
+<header>
+    <span>🏭 Ice factory - مصنع شلباب للثلج</span>
+    <div class="user-info" id="userInfo">تحميل...</div>
+    <button id="logoutBtn" class="logout-btn" style="display: none;">🚪 خروج</button>
+</header>
+
+<div class="tabs" id="tabsContainer" style="display: none;">
+    <button class="tab-btn active" data-page="sales">💰 البيع</button>
+    <button class="tab-btn" data-page="productionExp">🏭 إنتاج</button>
+    <button class="tab-btn" data-page="workers">👥 العمال</button>
+    <button class="tab-btn" data-page="debts">📋 الديون</button>
+    <button class="tab-btn" data-page="reports">📊 التقارير</button>
+    <button class="tab-btn" data-page="analytics">📈 تحليلات</button>
+    <button class="tab-btn" data-page="archive">🗄 أرشيف</button>
+</div>
+
+<div class="container" id="mainContainer"></div>
+
+<div id="authScreen" class="login-container">
+    <h3>🔐 دخول المصنع</h3>
+    <input type="email" id="loginEmail" placeholder="البريد الإلكتروني">
+    <input type="password" id="loginPassword" placeholder="كلمة المرور">
+    <button id="loginBtn">تسجيل الدخول</button>
+    <button id="guestBtn" class="btn-outline" style="margin-top:8px;">دخول كزائر (قراءة محدودة)</button>
+    <p style="font-size:12px; margin-top:12px;">المدير: بريد مسجل مسبقاً | المستخدم العادي: يسجل بنفسه | الزائر: مشاهدة رسوم بيانية فقط</p>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
