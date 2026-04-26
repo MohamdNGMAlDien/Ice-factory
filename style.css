@@ -1,0 +1,274 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Cairo', sans-serif;
+}
+
+body {
+    background: #eef2f7;
+    padding-bottom: 30px;
+}
+
+header {
+    background: #0b3b5f;
+    color: white;
+    padding: 12px;
+    text-align: center;
+    font-size: 1.2rem;
+    font-weight: bold;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.user-info {
+    font-size: 0.8rem;
+    background: #1e4660;
+    padding: 4px 12px;
+    border-radius: 30px;
+}
+
+.logout-btn {
+    background: #c44536;
+    border: none;
+    padding: 4px 12px;
+    border-radius: 30px;
+    color: white;
+    cursor: pointer;
+}
+
+.tabs {
+    display: flex;
+    background: #fff;
+    flex-wrap: wrap;
+    border-bottom: 2px solid #dce4ec;
+}
+
+.tab-btn {
+    flex: 1;
+    text-align: center;
+    padding: 10px 4px;
+    cursor: pointer;
+    font-weight: 600;
+    background: #f8fafc;
+    border: none;
+    font-size: 0.8rem;
+}
+
+.tab-btn.active {
+    background: #1e6f5c;
+    color: white;
+    border-bottom: 3px solid #ffc107;
+}
+
+.container {
+    padding: 12px;
+    max-width: 800px;
+    margin: auto;
+}
+
+.page {
+    display: none;
+}
+
+.page.active-page {
+    display: block;
+}
+
+.card {
+    background: white;
+    border-radius: 20px;
+    padding: 16px;
+    margin-bottom: 20px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+}
+
+.card h3 {
+    color: #1e4660;
+    margin-bottom: 12px;
+    border-right: 4px solid #1e6f5c;
+    padding-right: 12px;
+    font-size: 1rem;
+}
+
+input, select, button {
+    width: 100%;
+    padding: 10px;
+    margin: 5px 0;
+    border-radius: 40px;
+    border: 1px solid #ccc;
+    font-size: 0.9rem;
+}
+
+button {
+    background: #1e6f5c;
+    color: white;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+button:active {
+    transform: scale(0.97);
+}
+
+.btn-danger {
+    background: #c44536;
+}
+
+.btn-warning {
+    background: #e6a017;
+}
+
+.btn-outline {
+    background: white;
+    border: 1px solid #1e6f5c;
+    color: #1e6f5c;
+}
+
+.flex-btns {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.flex-btns button {
+    flex: 1;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.7rem;
+}
+
+th {
+    background: #1e4660;
+    color: white;
+    padding: 6px;
+}
+
+td, th {
+    border: 1px solid #cbd5e1;
+    padding: 5px;
+    text-align: center;
+}
+
+.toast {
+    position: fixed;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #1e6f5c;
+    color: white;
+    padding: 8px 16px;
+    border-radius: 50px;
+    z-index: 2000;
+    animation: fadeinout 2s ease forwards;
+    font-size: 0.8rem;
+}
+
+@keyframes fadeinout {
+    0% { opacity: 0; transform: translateX(-50%) translateY(20px); }
+    15% { opacity: 1; transform: translateX(-50%) translateY(0); }
+    85% { opacity: 1; }
+    100% { opacity: 0; visibility: hidden; }
+}
+
+.login-container {
+    max-width: 400px;
+    margin: 50px auto;
+    background: white;
+    padding: 20px;
+    border-radius: 20px;
+    text-align: center;
+}
+
+canvas {
+    max-height: 250px;
+    width: 100%;
+    background: white;
+    border-radius: 16px;
+    padding: 8px;
+    margin-bottom: 20px;
+}
+
+.date-range {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+    margin-bottom: 12px;
+}
+
+.date-range input {
+    width: auto;
+    flex: 1;
+}
+
+.badge-debt {
+    background: #fee2e2;
+    color: #c44536;
+    padding: 2px 6px;
+    border-radius: 20px;
+    font-size: 0.7rem;
+}
+
+.workers-table, .debt-table {
+    width: 100%;
+    font-size: 0.7rem;
+}
+
+.action-icons {
+    display: flex;
+    gap: 5px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.icon-btn {
+    background: #e2e8f0;
+    border: none;
+    border-radius: 30px;
+    padding: 4px 8px;
+    font-size: 0.65rem;
+    cursor: pointer;
+}
+
+.icon-btn.edit {
+    background: #3b82f6;
+    color: white;
+}
+
+.icon-btn.cycle {
+    background: #e6a017;
+    color: white;
+}
+
+.icon-btn.advance {
+    background: #8b5cf6;
+    color: white;
+}
+
+.hidden {
+    display: none;
+}
+
+@media (max-width: 650px) {
+    .tab-btn {
+        font-size: 0.7rem;
+    }
+    .date-range input {
+        font-size: 0.7rem;
+    }
+    .toast {
+        white-space: normal;
+        width: 80%;
+        text-align: center;
+    }
+    .workers-table, .debt-table {
+        font-size: 0.65rem;
+    }
+}
