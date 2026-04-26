@@ -380,8 +380,64 @@
     function addProduction() { productions.push({ date: document.getElementById("prodDate").value, boards: 340 }); saveAll(); updateUI(); showToast("🏭 دورة إنتاج"); }
     function addExpense() { let d=document.getElementById("expDesc").value, a=+document.getElementById("expAmount").value, dt=document.getElementById("expDate").value; if(d&&a>0){ expenses.push({date:dt,desc:d,amount:a}); saveAll(); updateUI(); document.getElementById("expDesc").value=""; document.getElementById("expAmount").value=""; showToast(`💸 مصروف:${d}`); } }
     function addDamage() { let q=+document.getElementById("damageQty").value, dt=document.getElementById("damageDate").value; if(q>0){ damages.push({date:dt,qty:q}); saveAll(); updateUI(); document.getElementById("damageQty").value=""; showToast(`⚠️ تالف ${q}`); } }
-    function resetWeek() { if(confirm("تصفير الأسبوع؟")){ localStorage.setItem("factory_last_week_backup",JSON.stringify({ customers, customerTransactions, productions, expenses, damages, workers, cyclesLog })); customers=[]; customerTransactions=[]; productions=[]; expenses=[]; damages=[]; cyclesLog=[]; workers=[{id:"w1",name:"محمد أحمد",cycles:0,totalEarned:0,advances:0},{id:"w2",name:"خالد علي",cycles:0,totalEarned:0,advances:0},{id:"w3",name:"سعيد جمال",cycles:0,totalEarned:0,advances:0},{id:"w4",name:"نادر سمير",cycles:0,totalEarned:0,advances:0}]; saveAll(); updateUI(); showToast("بدأ أسبوع جديد"); } }
+    function resetWeek() {
+    // حساب المخزون المتبقي من الأسبوع المنصرم
+    let remainingStock = getApproxStock();
     
+    if(!confirm(`⚠️ هل أنت متأكد؟\n\nسيتم حذف سجل الأسبوع الحالي.\nسيتم نقل المخزون المتبقي (${remainingStock} لوح) إلى الأسبوع الجديد.\n\nالمحذوف:\n- سجل المبيعات\n- سجل الإنتاج القديم\n- سجل المصروفات\n- سجل التالف\n\nالباقي:\n- العملاء والديون\n- العمال وسلفياتهم\n- مخزون ${remainingStock} لوح\n\nهل تريد المتابعة؟`)) return;
+    
+    // حفظ نسخة احتياطية للأسبوع المنصرم
+    localStorage.setItem("factory_last_week_backup", JSON.stringify({
+        backupDate: new Date().toISOString(),
+        oldProduction: getTotalProduction(),
+        oldSales: getTotalSalesQty(),
+        oldStock: remainingStock,
+        deletedTransactions: [...customerTransactions],
+        deletedProductions: [...productions],
+        deletedExpenses: [...expenses],
+        deletedDamages: [...damages]
+    }));
+    
+    // تصفير المبيعات (معاملات الأسبوع)
+    customerTransactions = [];
+    
+    // تصفير المصروفات
+    expenses = [];
+    
+    // تصفير التالف
+    damages = [];
+    
+    // إنشاء إنتاج جديد يحتوي على المخزون المتبقي كرصيد افتتاحي
+    if (remainingStock > 0) {
+        productions = [{
+            date: new Date().toISOString().slice(0,10),
+            boards: remainingStock,
+            note: "رصيد مخزون من الأسبوع السابق"
+        }];
+    } else {
+        productions = [];
+    }
+    
+    // تصفير سجل دورات العمال (اختياري)
+    cyclesLog = [];
+    
+    // إعادة ضبط دورات العمال إلى صفر (مع الاحتفاظ بالسلفيات)
+    workers.forEach(w => {
+        w.cycles = 0;
+        w.totalEarned = 0;
+        // السلفيات (advances) تبقى كما هي
+    });
+    
+    // حفظ التغييرات
+    saveAll();
+    updateUI();
+    
+    if (remainingStock > 0) {
+        showToast(`✅ بدأ أسبوع جديد\n📦 تم ترحيل ${remainingStock} لوح مخزون متبقي`);
+    } else {
+        showToast(`✅ بدأ أسبوع جديد\n⚠️ المخزون كان صفراً، ابدأ بإنتاج جديد`);
+    }
+}
     async function updateUI() {
         updateCustomersDebt();
         document.getElementById("quickStats").innerHTML = `💰 كاش:${getCashTotal().toFixed(2)} | 📋 ديون:${getDebtsTotal().toFixed(2)} | 🧊 مخزون:${getApproxStock()}`;
