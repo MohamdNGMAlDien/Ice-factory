@@ -117,6 +117,17 @@
     
     // سنكمل في الجزء الثاني...
     console.log("الجزء الأول تم بنجاح. انتظر الجزء الثاني.");
+document.getElementById("logoutBtn")?.addEventListener("click", async () => {
+    await auth.signOut();
+    localStorage.clear();
+    location.reload();
+});
+    function updateUserUI(user) {
+    const logoutBtn = document.getElementById("logoutBtn");
+    if(user && logoutBtn) {
+        logoutBtn.style.display = "inline-block";
+    }
+}
 </script>
     <script>
     // -------------------- 3. بناء هيكل الصفحات (HTML داخلي) --------------------
