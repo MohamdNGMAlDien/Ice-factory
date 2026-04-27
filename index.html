@@ -1416,17 +1416,23 @@
     // نظام الإنتاج والمصروفات
     // ============================================
     async function addProduction() {
-        const date = document.getElementById('prodDate').value || formatDate(new Date());
-        const qty = parseInt(document.getElementById('prodQty').value);
-        if (!qty || qty <= 0) { showToast('أدخل كمية صحيحة', true); return; }
-        
-        const production = { id: generateId(), date: date, boards: qty };
-        await DB.save(DB.collections.PRODUCTIONS, production, production.id);
-        appData.productions.push(production);
-        renderExpensesList();
-        showToast(`✅ تم إضافة إنتاج: ${qty} لوح`);
-        refreshAll();
-    }
+    const date = document.getElementById('prodDate').value || formatDate(new Date());
+    const qty = parseInt(document.getElementById('prodQty').value);
+    if (!qty || qty <= 0) { showToast('أدخل كمية صحيحة', true); return; }
+    
+    const production = { id: generateId(), date: date, boards: qty };
+    await DB.save(DB.collections.PRODUCTIONS, production, production.id);
+    appData.productions.push(production);
+    
+    // ✅ زيادة المخزون عند الإنتاج
+    let inventory = JSON.parse(localStorage.getItem('inventory')) || { total: 0 };
+    inventory.total = (inventory.total || 0) + qty;
+    localStorage.setItem('inventory', JSON.stringify(inventory));
+    
+    renderExpensesList();
+    showToast(`✅ تم إضافة إنتاج: ${qty} لوح`);
+    refreshAll();
+}
 
     async function addExpense() {
         const desc = document.getElementById('expDesc').value;
@@ -1446,19 +1452,24 @@
     }
 
     async function addDamage() {
-        const qty = parseInt(document.getElementById('damageQty').value);
-        const date = document.getElementById('damageDate').value || formatDate(new Date());
-        if (!qty || qty <= 0) { showToast('أدخل كمية صحيحة', true); return; }
-        
-        const damage = { id: generateId(), qty: qty, date: date };
-        await DB.save(DB.collections.DAMAGES, damage, damage.id);
-        appData.damages.push(damage);
-        
-        document.getElementById('damageQty').value = '';
-        renderExpensesList();
-        showToast(`⚠️ تم تسجيل تالف: ${qty} لوح`);
-        refreshAll();
-    }
+    const qty = parseInt(document.getElementById('damageQty').value);
+    const date = document.getElementById('damageDate').value || formatDate(new Date());
+    if (!qty || qty <= 0) { showToast('أدخل كمية صحيحة', true); return; }
+    
+    const damage = { id: generateId(), qty: qty, date: date };
+    await DB.save(DB.collections.DAMAGES, damage, damage.id);
+    appData.damages.push(damage);
+    
+    // ✅ نقص المخزون عند التالف
+    let inventory = JSON.parse(localStorage.getItem('inventory')) || { total: getInventory() };
+    inventory.total = Math.max(0, (inventory.total || getInventory()) - qty);
+    localStorage.setItem('inventory', JSON.stringify(inventory));
+    
+    document.getElementById('damageQty').value = '';
+    renderExpensesList();
+    showToast(`⚠️ تم تسجيل تالف: ${qty} لوح`);
+    refreshAll();
+}
 
     async function renderExpensesList() {
         const container = document.getElementById('expensesList');
