@@ -996,14 +996,15 @@
     }
 
     function getInventory() {
-    // محاولة قراءة المخزون من localStorage أولاً
-    const savedInventory = localStorage.getItem('inventory');
-    if (savedInventory) {
-        const inv = JSON.parse(savedInventory);
-        if (inv.total !== undefined) return inv.total;
-    }
-    // إذا لم يوجد، احسب من الإنتاج والتالف
-    return getTotalProduction() - getTotalDamages();
+    // 🔥 حساب المخزون من Firebase مباشرة (موحد بين جميع المتصفحات)
+    const totalProduction = appData.productions.reduce((sum, p) => sum + p.boards, 0);
+    const totalSales = appData.transactions
+        .filter(t => t.type === 'purchase')
+        .reduce((sum, t) => sum + (t.qty || 0), 0);
+    const totalDamages = appData.damages.reduce((sum, d) => sum + d.qty, 0);
+    
+    // المخزون = الإنتاج - المبيعات - التالف
+    return totalProduction - totalSales - totalDamages;
 }
 
     // ============================================
@@ -1131,10 +1132,7 @@
     await DB.save(DB.collections.TRANSACTIONS, transaction, transaction.id);
     appData.transactions.push(transaction);
     
-    // ✅ إصلاح المشكلة: تحديث المخزون عند البيع
-    let inventory = JSON.parse(localStorage.getItem('inventory')) || { total: getInventory() };
-    inventory.total = Math.max(0, (inventory.total || getInventory()) - qty);
-    localStorage.setItem('inventory', JSON.stringify(inventory));
+    // ✅ تم حذف localStorage - المخزون يحسب تلقائياً من البيانات
     
     if (remaining > 0) {
         showToast(`✅ تم البيع: ${qty} لوح، متبقي ${formatCurrency(remaining)}`);
@@ -1424,10 +1422,7 @@
     await DB.save(DB.collections.PRODUCTIONS, production, production.id);
     appData.productions.push(production);
     
-    // ✅ زيادة المخزون عند الإنتاج
-    let inventory = JSON.parse(localStorage.getItem('inventory')) || { total: 0 };
-    inventory.total = (inventory.total || 0) + qty;
-    localStorage.setItem('inventory', JSON.stringify(inventory));
+    // ✅ تم حذف localStorage
     
     renderExpensesList();
     showToast(`✅ تم إضافة إنتاج: ${qty} لوح`);
@@ -1460,10 +1455,7 @@
     await DB.save(DB.collections.DAMAGES, damage, damage.id);
     appData.damages.push(damage);
     
-    // ✅ نقص المخزون عند التالف
-    let inventory = JSON.parse(localStorage.getItem('inventory')) || { total: getInventory() };
-    inventory.total = Math.max(0, (inventory.total || getInventory()) - qty);
-    localStorage.setItem('inventory', JSON.stringify(inventory));
+    // ✅ تم حذف localStorage
     
     document.getElementById('damageQty').value = '';
     renderExpensesList();
@@ -1725,47 +1717,93 @@
     // بدء أسبوع جديد
     // ============================================
     async function startNewWeek() {
-        const weekStart = new Date();
-        weekStart.setDate(weekStart.getDate() - 7);
+    const weekStart = new Date();
+    weekStart.setDate(weekStart.getDate() - 7);
+    
+    const weekTransactions = appData.transactions.filter(t => t.date >= formatDate(weekStart));
+    const weekProductions = appData.productions.filter(p => p.date >= formatDate(weekStart));
+    const weekExpenses = appData.expenses.filter(e => e.date >= formatDate(weekStart));
+    const weekDamages = appData.damages.filter(d => d.date >= formatDate(weekStart));
+    
+    const weekSales = weekTransactions.filter(t => t.type === 'purchase').reduce((s, t) => s + (t.paid || 0), 0);
+    const weekRepayments = weekTransactions.filter(t => t.type === 'repayment').reduce((s, t) => s + (t.paid || 0), 0);
+    const weekExpensesTotal = weekExpenses.reduce((s, e) => s + e.amount, 0);
+    const weekProfit = (weekSales + weekRepayments) - weekExpensesTotal;
+    
+    // ✅ حساب المخزون المتبقي من البيانات (وليس من localStorage)
+    const remainingStock = getInventory();
+    
+    if (!confirm(`⚠️ هل أنت متأكد من بدء أسبوع جديد؟\n\n📊 أرباح الأسبوع: ${formatCurrency(weekProfit)}\n📦 المخزون المرحل: ${remainingStock} لوح`)) return;
+    
+    showLoading(true);
+    
+    try {
+        // حفظ أرشيف الأسبوع
+        const weekBackup = { 
+            id: generateId(), 
+            type: 'weekly_archive', 
+            weekStart: formatDate(weekStart), 
+            weekEnd: formatDate(new Date()), 
+            profit: weekProfit, 
+            sales: weekSales, 
+            repayments: weekRepayments, 
+            expenses: weekExpensesTotal, 
+            remainingStock: remainingStock, 
+            data: { 
+                transactions: weekTransactions, 
+                productions: weekProductions, 
+                expenses: weekExpenses,
+                damages: weekDamages
+            }, 
+            archivedAt: new Date().toISOString() 
+        };
+        await DB.save('weeklyArchives', weekBackup, weekBackup.id);
         
-        const weekTransactions = appData.transactions.filter(t => t.date >= formatDate(weekStart));
-        const weekProductions = appData.productions.filter(p => p.date >= formatDate(weekStart));
-        const weekExpenses = appData.expenses.filter(e => e.date >= formatDate(weekStart));
-        
-        const weekSales = weekTransactions.filter(t => t.type === 'purchase').reduce((s, t) => s + (t.paid || 0), 0);
-        const weekRepayments = weekTransactions.filter(t => t.type === 'repayment').reduce((s, t) => s + (t.paid || 0), 0);
-        const weekExpensesTotal = weekExpenses.reduce((s, e) => s + e.amount, 0);
-        const weekProfit = (weekSales + weekRepayments) - weekExpensesTotal;
-        const remainingStock = getInventory();
-        
-        if (!confirm(`⚠️ هل أنت متأكد من بدء أسبوع جديد؟\n\n📊 أرباح الأسبوع: ${formatCurrency(weekProfit)}\n📦 المخزون المرحل: ${remainingStock} لوح`)) return;
-        
-        showLoading(true);
-        
-        try {
-            const weekBackup = { id: generateId(), type: 'weekly_archive', weekStart: formatDate(weekStart), weekEnd: formatDate(new Date()), profit: weekProfit, sales: weekSales, repayments: weekRepayments, expenses: weekExpensesTotal, remainingStock: remainingStock, data: { transactions: weekTransactions, productions: weekProductions, expenses: weekExpenses }, archivedAt: new Date().toISOString() };
-            await DB.save('weeklyArchives', weekBackup, weekBackup.id);
-            
-            for (const t of weekTransactions) { await DB.delete(DB.collections.TRANSACTIONS, t.id); appData.transactions = appData.transactions.filter(x => x.id !== t.id); }
-            for (const p of weekProductions) { await DB.delete(DB.collections.PRODUCTIONS, p.id); appData.productions = appData.productions.filter(x => x.id !== p.id); }
-            for (const e of weekExpenses) { await DB.delete(DB.collections.EXPENSES, e.id); appData.expenses = appData.expenses.filter(x => x.id !== e.id); }
-            
-            if (remainingStock > 0) {
-                const openingStock = { id: generateId(), date: formatDate(new Date()), boards: remainingStock, note: 'مخزون مرحل' };
-                await DB.save(DB.collections.PRODUCTIONS, openingStock, openingStock.id);
-                appData.productions.push(openingStock);
-            }
-            
-            for (const worker of appData.workers) { worker.cycles = 0; worker.totalEarned = 0; await DB.save(DB.collections.WORKERS, worker, worker.id); }
-            
-            await refreshAll();
-            showToast(`✅ تم بدء أسبوع جديد - المخزون المرحل: ${remainingStock} لوح`);
-        } catch (error) {
-            showToast('❌ حدث خطأ', true);
-        } finally {
-            showLoading(false);
+        // حذف بيانات الأسبوع
+        for (const t of weekTransactions) { 
+            await DB.delete(DB.collections.TRANSACTIONS, t.id); 
+            appData.transactions = appData.transactions.filter(x => x.id !== t.id); 
         }
+        for (const p of weekProductions) { 
+            await DB.delete(DB.collections.PRODUCTIONS, p.id); 
+            appData.productions = appData.productions.filter(x => x.id !== p.id); 
+        }
+        for (const e of weekExpenses) { 
+            await DB.delete(DB.collections.EXPENSES, e.id); 
+            appData.expenses = appData.expenses.filter(x => x.id !== e.id); 
+        }
+        for (const d of weekDamages) { 
+            await DB.delete(DB.collections.DAMAGES, d.id); 
+            appData.damages = appData.damages.filter(x => x.id !== d.id); 
+        }
+        
+        // ✅ ترحيل المخزون المتبقي كإنتاج أولي للأسبوع الجديد
+        if (remainingStock > 0) {
+            const openingStock = { 
+                id: generateId(), 
+                date: formatDate(new Date()), 
+                boards: remainingStock, 
+                note: 'مخزون مرحل من الأسبوع السابق' 
+            };
+            await DB.save(DB.collections.PRODUCTIONS, openingStock, openingStock.id);
+            appData.productions.push(openingStock);
+        }
+        
+        // تصفير دورات العمال
+        for (const worker of appData.workers) { 
+            worker.cycles = 0; 
+            worker.totalEarned = 0; 
+            await DB.save(DB.collections.WORKERS, worker, worker.id); 
+        }
+        
+        await refreshAll();
+        showToast(`✅ تم بدء أسبوع جديد - المخزون المرحل: ${remainingStock} لوح`);
+    } catch (error) {
+        showToast('❌ حدث خطأ', true);
+    } finally {
+        showLoading(false);
     }
+}
 
     // ============================================
     // النسخ الاحتياطي
