@@ -996,8 +996,15 @@
     }
 
     function getInventory() {
-        return getTotalProduction() - getTotalDamages();
+    // محاولة قراءة المخزون من localStorage أولاً
+    const savedInventory = localStorage.getItem('inventory');
+    if (savedInventory) {
+        const inv = JSON.parse(savedInventory);
+        if (inv.total !== undefined) return inv.total;
     }
+    // إذا لم يوجد، احسب من الإنتاج والتالف
+    return getTotalProduction() - getTotalDamages();
+}
 
     // ============================================
     // تحديث واجهة المستخدم
@@ -1092,48 +1099,54 @@
         customerGroup.style.display = remaining > 0 ? 'block' : 'none';
     }
 
+    
     async function processSale() {
-        const qty = parseInt(document.getElementById('saleQty').value);
-        const price = parseFloat(document.getElementById('salePrice').value);
-        const paidNow = parseFloat(document.getElementById('paidNow').value);
-        const customerId = document.getElementById('customerSelect').value;
-        
-        if (!qty || qty <= 0) { showToast('أدخل كمية صحيحة', true); return; }
-        
-        const total = qty * price;
-        const remaining = total - paidNow;
-        
-        if (remaining > 0 && !customerId) { showToast('يجب اختيار عميل للدين', true); return; }
-        
-        const today = formatDate(new Date());
-        
-        const transaction = {
-            id: generateId(),
-            date: today,
-            type: 'purchase',
-            qty: qty,
-            price: price,
-            totalAmount: total,
-            paid: paidNow,
-            remaining: remaining,
-            customerId: remaining > 0 ? customerId : 'cash',
-            customerName: remaining > 0 ? appData.customers.find(c => c.id === customerId)?.name : 'كاش'
-        };
-        
-        await DB.save(DB.collections.TRANSACTIONS, transaction, transaction.id);
-        appData.transactions.push(transaction);
-        
-        if (remaining > 0) {
-            showToast(`✅ تم البيع: ${qty} لوح، متبقي ${formatCurrency(remaining)}`);
-        } else {
-            showToast(`✅ تم البيع كاش: ${qty} لوح، ${formatCurrency(total)}`);
-        }
-        
-        document.getElementById('saleQty').value = '0';
-        document.getElementById('paidNow').value = '0';
-        updateTotalInfo();
-        await refreshAll();
+    const qty = parseInt(document.getElementById('saleQty').value);
+    const price = parseFloat(document.getElementById('salePrice').value);
+    const paidNow = parseFloat(document.getElementById('paidNow').value);
+    const customerId = document.getElementById('customerSelect').value;
+    
+    if (!qty || qty <= 0) { showToast('أدخل كمية صحيحة', true); return; }
+    
+    const total = qty * price;
+    const remaining = total - paidNow;
+    
+    if (remaining > 0 && !customerId) { showToast('يجب اختيار عميل للدين', true); return; }
+    
+    const today = formatDate(new Date());
+    
+    const transaction = {
+        id: generateId(),
+        date: today,
+        type: 'purchase',
+        qty: qty,
+        price: price,
+        totalAmount: total,
+        paid: paidNow,
+        remaining: remaining,
+        customerId: remaining > 0 ? customerId : 'cash',
+        customerName: remaining > 0 ? appData.customers.find(c => c.id === customerId)?.name : 'كاش'
+    };
+    
+    await DB.save(DB.collections.TRANSACTIONS, transaction, transaction.id);
+    appData.transactions.push(transaction);
+    
+    // ✅ إصلاح المشكلة: تحديث المخزون عند البيع
+    let inventory = JSON.parse(localStorage.getItem('inventory')) || { total: getInventory() };
+    inventory.total = Math.max(0, (inventory.total || getInventory()) - qty);
+    localStorage.setItem('inventory', JSON.stringify(inventory));
+    
+    if (remaining > 0) {
+        showToast(`✅ تم البيع: ${qty} لوح، متبقي ${formatCurrency(remaining)}`);
+    } else {
+        showToast(`✅ تم البيع كاش: ${qty} لوح، ${formatCurrency(total)}`);
     }
+    
+    document.getElementById('saleQty').value = '0';
+    document.getElementById('paidNow').value = '0';
+    updateTotalInfo();
+    await refreshAll();
+}
 
     async function processRepayment() {
         const customerId = document.getElementById('repayCustomerSelect').value;
