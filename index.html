@@ -1738,32 +1738,40 @@
     }
 
     function setupNavigation() {
-        const navItems = document.querySelectorAll('.nav-item');
-        const pages = document.querySelectorAll('.page');
-        
-        navItems.forEach(item => {
-            item.onclick = () => {
-                const pageId = item.dataset.page;
-                navItems.forEach(nav => nav.classList.remove('active'));
-                item.classList.add('active');
-                pages.forEach(page => page.classList.remove('active'));
-                document.getElementById(pageId).classList.add('active');
-                if (pageId === 'dashboard') updateDashboard();
-                if (pageId === 'reports') refreshReports();
-                if (pageId === 'archive') loadBackupsList();
-            };
-        });
-        
-        const menuToggle = document.getElementById('menuToggle');
-        if (menuToggle) {
-            menuToggle.onclick = () => {
-                document.getElementById('sidebar').classList.toggle('active');
-                document.querySelector('.main-content').classList.toggle('expanded');
-            };
-        }
-        
-        document.getElementById('backupNowBtn').onclick = createBackup;
+    const navItems = document.querySelectorAll('.nav-item');
+    const pages = document.querySelectorAll('.page');
+    
+    navItems.forEach(item => {
+        item.onclick = () => {
+            const pageId = item.dataset.page;
+            navItems.forEach(nav => nav.classList.remove('active'));
+            item.classList.add('active');
+            pages.forEach(page => page.classList.remove('active'));
+            document.getElementById(pageId).classList.add('active');
+            if (pageId === 'dashboard') updateDashboard();
+            if (pageId === 'reports') refreshReports();
+            if (pageId === 'archive') loadBackupsList();
+            
+            // ✅ إغلاق القائمة الجانبية بعد الضغط على التبويب (للموبايل)
+            const sidebar = document.getElementById('sidebar');
+            const mainContent = document.querySelector('.main-content');
+            if (sidebar.classList.contains('active')) {
+                sidebar.classList.remove('active');
+                mainContent.classList.remove('expanded');
+            }
+        };
+    });
+    
+    const menuToggle = document.getElementById('menuToggle');
+    if (menuToggle) {
+        menuToggle.onclick = () => {
+            document.getElementById('sidebar').classList.toggle('active');
+            document.querySelector('.main-content').classList.toggle('expanded');
+        };
     }
+    
+    document.getElementById('backupNowBtn').onclick = createBackup;
+}
 
     // دوال سريعة للاستخدام العالمي
     window.quickSale = () => document.querySelector('[data-page="sales"]').click();
