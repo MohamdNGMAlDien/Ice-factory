@@ -775,6 +775,15 @@ html, body {
                     <button onclick="exportToCSV()" class="btn-success"><i class="fas fa-file-excel"></i> تصدير Excel</button>
                     <button onclick="printReport()" class="btn-warning"><i class="fas fa-print"></i> طباعة</button>
                 </div>
+                <div class="card" style="margin-top: 20px; border-right: 4px solid #ef4444;">
+    <h3><i class="fas fa-calendar-week"></i> إدارة الأسابيع</h3>
+    <button onclick="startNewWeek()" class="btn-danger" style="width: 100%;">
+        <i class="fas fa-forward"></i> أسبوع جديد - ترحيل المخزون وحفظ الأسبوع الحالي
+    </button>
+    <p style="font-size: 12px; color: #666; margin-top: 10px;">
+        ⚠️ سيتم حفظ نسخة من الأسبوع الحالي، ثم بدء أسبوع جديد مع ترحيل المخزون المتبقي والديون والعمال.
+    </p>
+                </div>
             </div>
 
             <div id="archive" class="page">
@@ -1688,6 +1697,8 @@ html, body {
         });
         html += '</tbody></table>';
         container.innerHTML = html;
+   // أضف هذا السطر في نهاية دالة loadBackupsList()
+loadWeeklyArchives();
     }
 
     async function restoreBackup(backupId) {
@@ -1864,7 +1875,223 @@ html, body {
         showLoading(false);
         showToast('✅ تم تشغيل النظام بنجاح');
     }
+// ============================================
+// بدء أسبوع جديد - مع ترحيل المخزون وحفظ الأرشيف
+// ============================================
+async function startNewWeek() {
+    // حساب إحصائيات الأسبوع الحالي
+    const weekStart = new Date();
+    weekStart.setDate(weekStart.getDate() - 7);
+    
+    const weekTransactions = appData.transactions.filter(t => t.date >= formatDate(weekStart));
+    const weekProductions = appData.productions.filter(p => p.date >= formatDate(weekStart));
+    const weekExpenses = appData.expenses.filter(e => e.date >= formatDate(weekStart));
+    const weekDamages = appData.damages.filter(d => d.date >= formatDate(weekStart));
+    
+    const weekSales = weekTransactions.filter(t => t.type === 'purchase').reduce((s, t) => s + (t.paid || 0), 0);
+    const weekRepayments = weekTransactions.filter(t => t.type === 'repayment').reduce((s, t) => s + (t.paid || 0), 0);
+    const weekExpensesTotal = weekExpenses.reduce((s, e) => s + e.amount, 0);
+    const weekProfit = (weekSales + weekRepayments) - weekExpensesTotal;
+    const remainingStock = getInventory();
+    
+    const confirmMsg = `⚠️ هل أنت متأكد من بدء أسبوع جديد؟
 
+📊 ملخص الأسبوع الحالي:
+• إجمالي الإيرادات: ${formatCurrency(weekSales + weekRepayments)}
+• إجمالي المصروفات: ${formatCurrency(weekExpensesTotal)}
+• صافي الربح: ${formatCurrency(weekProfit)}
+• المخزون المتبقي: ${remainingStock} لوح
+
+📦 سيتم:
+1. حفظ نسخة كاملة من الأسبوع الحالي في السحابة
+2. الاحتفاظ بالعملاء والديون (دون تغيير)
+3. الاحتفاظ بالعمال وسلفياتهم (تستمر)
+4. ترحيل المخزون المتبقي (${remainingStock} لوح)
+5. تصفير المبيعات والإنتاج والمصروفات والتالف
+6. تصفير دورات العمال (تبدأ من الصفر)
+
+هل تريد المتابعة؟`;
+
+    if (!confirm(confirmMsg)) return;
+    
+    showLoading(true);
+    
+    try {
+        // 1. حفظ نسخة من الأسبوع الحالي
+        const weekBackup = {
+            id: generateId(),
+            type: 'weekly_archive',
+            weekStart: formatDate(weekStart),
+            weekEnd: formatDate(new Date()),
+            profit: weekProfit,
+            sales: weekSales,
+            repayments: weekRepayments,
+            expenses: weekExpensesTotal,
+            remainingStock: remainingStock,
+            data: {
+                transactions: weekTransactions,
+                productions: weekProductions,
+                expenses: weekExpenses,
+                damages: weekDamages
+            },
+            archivedAt: new Date().toISOString()
+        };
+        
+        await DB.save('weeklyArchives', weekBackup, weekBackup.id);
+        
+        // 2. حذف بيانات الأسبوع الحالي (مع الاحتفاظ بالعملاء والديون والعمال)
+        // حذف معاملات الأسبوع
+        for (const t of weekTransactions) {
+            await DB.delete(DB.collections.TRANSACTIONS, t.id);
+            appData.transactions = appData.transactions.filter(x => x.id !== t.id);
+        }
+        
+        // حذف إنتاج الأسبوع
+        for (const p of weekProductions) {
+            await DB.delete(DB.collections.PRODUCTIONS, p.id);
+            appData.productions = appData.productions.filter(x => x.id !== p.id);
+        }
+        
+        // حذف مصروفات الأسبوع
+        for (const e of weekExpenses) {
+            await DB.delete(DB.collections.EXPENSES, e.id);
+            appData.expenses = appData.expenses.filter(x => x.id !== e.id);
+        }
+        
+        // حذف تالف الأسبوع
+        for (const d of weekDamages) {
+            await DB.delete(DB.collections.DAMAGES, d.id);
+            appData.damages = appData.damages.filter(x => x.id !== d.id);
+        }
+        
+        // 3. ترحيل المخزون المتبقي كإنتاج أولي للأسبوع الجديد
+        if (remainingStock > 0) {
+            const openingStock = {
+                id: generateId(),
+                date: formatDate(new Date()),
+                boards: remainingStock,
+                note: 'مخزون مرحل من الأسبوع السابق'
+            };
+            await DB.save(DB.collections.PRODUCTIONS, openingStock, openingStock.id);
+            appData.productions.push(openingStock);
+        }
+        
+        // 4. تصفير دورات العمال (مع الاحتفاظ بالسلفيات)
+        for (const worker of appData.workers) {
+            worker.cycles = 0;
+            worker.totalEarned = 0;
+            await DB.save(DB.collections.WORKERS, worker, worker.id);
+        }
+        
+        // 5. تحديث الواجهة
+        await refreshAll();
+        
+        showToast(`✅ تم بدء أسبوع جديد بنجاح\n📦 المخزون المرحل: ${remainingStock} لوح\n📊 أرباح الأسبوع المنقضي: ${formatCurrency(weekProfit)}`);
+        
+        // عرض رابط للنسخة المحفوظة
+        setTimeout(() => {
+            if (confirm(`📦 تم حفظ أ archive الأسبوع المنقضي في السحابة.\nهل تريد عرض سجل الأسابيع السابقة؟`)) {
+                document.querySelector('[data-page="archive"]').click();
+                loadWeeklyArchives();
+            }
+        }, 500);
+        
+    } catch (error) {
+        console.error('Error starting new week:', error);
+        showToast('❌ حدث خطأ في بدء أسبوع جديد', true);
+    } finally {
+        showLoading(false);
+    }
+}
+
+// ============================================
+// عرض سجل الأسابيع السابقة
+// ============================================
+async function loadWeeklyArchives() {
+    const weeklyArchives = await DB.getAll('weeklyArchives');
+    const container = document.getElementById('backupsList');
+    
+    if (!container) return;
+    
+    if (weeklyArchives.length === 0) {
+        // إذا كان container في صفحة archive، اعرض رسالة
+        if (container.innerHTML.includes('لا توجد')) return;
+        return;
+    }
+    
+    // إضافة قسم للأسابيع المؤرشفة في صفحة النسخ الاحتياطي
+    let archivesHtml = `
+        <div style="margin-top: 20px;">
+            <h4><i class="fas fa-calendar-week"></i> الأسابيع السابقة</h4>
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>بداية الأسبوع</th>
+                        <th>نهاية الأسبوع</th>
+                        <th>صافي الربح</th>
+                        <th>المخزون المرحل</th>
+                        <th>الإجراءات</th>
+                    </tr>
+                </thead>
+                <tbody>
+    `;
+    
+    for (const archive of weeklyArchives.sort((a, b) => new Date(b.weekEnd) - new Date(a.weekEnd))) {
+        archivesHtml += `
+            <tr>
+                <td>${archive.weekStart}</td>
+                <td>${archive.weekEnd}</td>
+                <td>${formatCurrency(archive.profit)}</td>
+                <td>${archive.remainingStock} لوح</td>
+                <td>
+                    <button onclick="restoreWeekArchive('${archive.id}')" class="btn-sm btn-primary">استعراض</button>
+                    <button onclick="deleteWeekArchive('${archive.id}')" class="btn-sm btn-danger">حذف</button>
+                </td>
+            </tr>
+        `;
+    }
+    
+    archivesHtml += '</tbody></table></div>';
+    
+    // إضافة إلى حاوية النسخ الاحتياطي
+    const existingArchives = container.querySelector('.weekly-archives-section');
+    if (existingArchives) {
+        existingArchives.innerHTML = archivesHtml;
+    } else {
+        const section = document.createElement('div');
+        section.className = 'weekly-archives-section';
+        section.innerHTML = archivesHtml;
+        container.appendChild(section);
+    }
+}
+
+// استعراض أرشيف أسبوع
+async function restoreWeekArchive(archiveId) {
+    const archives = await DB.getAll('weeklyArchives');
+    const archive = archives.find(a => a.id === archiveId);
+    
+    if (!archive) return;
+    
+    // عرض ملخص الأسبوع
+    alert(`📊 ملخص أسبوع ${archive.weekStart} إلى ${archive.weekEnd}
+
+💰 إجمالي الإيرادات: ${formatCurrency(archive.sales + archive.repayments)}
+💸 إجمالي المصروفات: ${formatCurrency(archive.expenses)}
+✅ صافي الربح: ${formatCurrency(archive.profit)}
+📦 المخزون المرحل: ${archive.remainingStock} لوح
+
+عدد المبيعات: ${archive.data.transactions.length}
+عدد دورات الإنتاج: ${archive.data.productions.length}
+عدد المصروفات: ${archive.data.expenses.length}`);
+}
+
+// حذف أرشيف أسبوع
+async function deleteWeekArchive(archiveId) {
+    if (!confirm('هل أنت متأكد من حذف هذا الأرشيف؟')) return;
+    await DB.delete('weeklyArchives', archiveId);
+    loadWeeklyArchives();
+    showToast('تم حذف الأرشيف');
+}
     init();
 </script>
 </body>
