@@ -2014,126 +2014,375 @@
     // تقرير PDF شامل
     // ============================================
     async function generateProfessionalPDF() {
-        showLoading(true);
-        showToast('⏳ جاري تجهيز التقرير...');
+    showLoading(true);
+    showToast('⏳ جاري تجهيز التقرير...');
+    
+    try {
+        const fromDate = document.getElementById('filterFrom').value;
+        const toDate = document.getElementById('filterTo').value;
+        const reportType = document.getElementById('reportType').value;
         
-        try {
-            const fromDate = document.getElementById('filterFrom').value;
-            const toDate = document.getElementById('filterTo').value;
-            const reportType = document.getElementById('reportType').value;
-            
-            let filteredTransactions = appData.transactions.filter(t => t.date >= fromDate && t.date <= toDate);
-            let filteredExpenses = appData.expenses.filter(e => e.date >= fromDate && e.date <= toDate);
-            let filteredProductions = appData.productions.filter(p => p.date >= fromDate && p.date <= toDate);
-            
-            const salesCash = filteredTransactions.filter(t => t.type === 'purchase' && t.remaining === 0).reduce((s, t) => s + t.paid, 0);
-            const salesDebt = filteredTransactions.filter(t => t.type === 'purchase' && t.remaining > 0).reduce((s, t) => s + t.paid, 0);
-            const repayments = filteredTransactions.filter(t => t.type === 'repayment').reduce((s, t) => s + t.paid, 0);
-            const totalRevenue = salesCash + salesDebt + repayments;
-            const totalExpenses = filteredExpenses.reduce((s, e) => s + e.amount, 0);
-            const totalProduction = filteredProductions.reduce((s, p) => s + p.boards, 0);
-            const netProfit = totalRevenue - totalExpenses;
-            const inventory = getInventory();
-            const totalDebt = getTotalDebt();
-            
-            // تجميع البيانات حسب اليوم
-            const dailyData = {};
-            const allDates = [...new Set([...filteredTransactions.map(t => t.date), ...filteredExpenses.map(e => e.date), ...filteredProductions.map(p => p.date)])].sort();
-            
-            allDates.forEach(date => {
-                const dayTransactions = filteredTransactions.filter(t => t.date === date);
-                const dayExpenses = filteredExpenses.filter(e => e.date === date);
-                const dayProduction = filteredProductions.filter(p => p.date === date);
-                dailyData[date] = {
-                    date: date,
-                    sales: dayTransactions.filter(t => t.type === 'purchase').reduce((s, t) => s + (t.paid || 0), 0),
-                    repayments: dayTransactions.filter(t => t.type === 'repayment').reduce((s, t) => s + (t.paid || 0), 0),
-                    expenses: dayExpenses.reduce((s, e) => s + e.amount, 0),
-                    production: dayProduction.reduce((s, p) => s + p.boards, 0)
-                };
-            });
-            
-            let dailyTableRows = '';
-            for (const [date, data] of Object.entries(dailyData)) {
-                const dayProfit = (data.sales + data.repayments) - data.expenses;
-                dailyTableRows += `</table>
-                    <td style="border:1px solid #ddd;padding:6px;">${formatDate(date, 'arabic')}</td>
-                    <td style="border:1px solid #ddd;padding:6px;">${formatCurrency(data.sales + data.repayments)}</td>
-                    <td style="border:1px solid #ddd;padding:6px;">${formatCurrency(data.expenses)}</td>
-                    <td style="border:1px solid #ddd;padding:6px;color:${dayProfit >= 0 ? '#10b981' : '#ef4444'};font-weight:bold;">${formatCurrency(dayProfit)}</td>
-                    <td style="border:1px solid #ddd;padding:6px;">${data.production} لوح</td>
-                </tr>`;
-            }
-            
-            let transactionsRows = '';
-            if (reportType === 'all' || reportType === 'sales') {
-                filteredTransactions.slice(0, 50).forEach(t => {
-                    transactionsRows += `<tr>
-                        <td style="border:1px solid #ddd;padding:4px;">${formatDate(t.date, 'arabic')}</td>
-                        <td style="border:1px solid #ddd;padding:4px;">${t.type === 'purchase' ? 'بيع' : 'تسديد'}</td>
-                        <td style="border:1px solid #ddd;padding:4px;">${t.customerName || 'كاش'}</td>
-                        <td style="border:1px solid #ddd;padding:4px;">${formatCurrency(t.paid || 0)}</td>
-                    </tr>`;
-                });
-            }
-            
-            let expensesRows = '';
-            if (reportType === 'all' || reportType === 'expenses') {
-                filteredExpenses.slice(0, 30).forEach(e => {
-                    expensesRows += `<tr>
-                        <td style="border:1px solid #ddd;padding:4px;">${formatDate(e.date, 'arabic')}</td>
-                        <td style="border:1px solid #ddd;padding:4px;">${e.description}</td>
-                        <td style="border:1px solid #ddd;padding:4px;">${formatCurrency(e.amount)}</td>
-                    </tr>`;
-                });
-            }
-            
-            const reportHTML = `<!DOCTYPE html><html dir="rtl"><head><meta charset="UTF-8"><title>تقرير مصنع الثلج</title><style>
-                body{font-family:'Tajawal',sans-serif;padding:20px;background:#f0f2f5}.report{max-width:1000px;margin:0 auto;background:white;border-radius:15px;overflow:hidden}
-                .header{background:linear-gradient(135deg,#1e40af,#2563eb);color:white;padding:20px;text-align:center}
-                .summary-section{padding:20px;background:#f8fafc}
-                .summary-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:15px;margin-bottom:20px}
-                .summary-card{background:white;padding:12px;border-radius:10px;text-align:center}
-                .summary-card .value{font-size:1.2rem;font-weight:bold}
-                .section-title{font-size:1rem;padding:10px 15px;margin:15px 0 0 0;background:#f1f5f9;border-right:3px solid #2563eb}
-                table{width:100%;border-collapse:collapse;margin-top:10px}
-                th,td{border:1px solid #ddd;padding:8px;text-align:center}
-                th{background:#1e293b;color:white}
-                .footer{background:#1e293b;color:#94a3b8;padding:12px;text-align:center;font-size:11px}
-                @media print{body{padding:0;background:white}}
-            </style></head><body>
-            <div class="report">
-                <div class="header"><h2>🏭 مصنع الثلج</h2><p>تقرير الفترة: ${formatDate(fromDate, 'arabic')} - ${formatDate(toDate, 'arabic')}</p></div>
-                <div class="summary-section">
-                    <div class="summary-grid">
-                        <div class="summary-card"><div>💰 الإيرادات</div><div class="value">${formatCurrency(totalRevenue)}</div></div>
-                        <div class="summary-card"><div>💸 المصروفات</div><div class="value">${formatCurrency(totalExpenses)}</div></div>
-                        <div class="summary-card"><div>✅ الأرباح</div><div class="value" style="color:${netProfit>=0?'#10b981':'#ef4444'}">${formatCurrency(netProfit)}</div></div>
-                        <div class="summary-card"><div>📦 المخزون</div><div class="value">${inventory} لوح</div></div>
-                    </div>
-                    <div class="section-title">📅 ملخص يومي</div>
-                    <div style="overflow-x:auto;"><table><thead><tr><th>التاريخ</th><th>الإيرادات</th><th>المصروفات</th><th>صافي اليوم</th><th>الإنتاج</th></tr></thead><tbody>${dailyTableRows || '<tr><td colspan="5">لا توجد بيانات</td></tr>'}</tbody></table></div>
-                    ${transactionsRows ? `<div class="section-title">📋 المعاملات المالية</div><div style="overflow-x:auto;"><table><thead><tr><th>التاريخ</th><th>النوع</th><th>العميل</th><th>المبلغ</th></tr></thead><tbody>${transactionsRows}</tbody></table></div>` : ''}
-                    ${expensesRows ? `<div class="section-title">💸 سجل المصروفات</div><div style="overflow-x:auto;"><table><thead><tr><th>التاريخ</th><th>الوصف</th><th>المبلغ</th></tr></thead><tbody>${expensesRows}</tbody></table></div>` : ''}
-                </div>
-                <div class="footer"><p>تم إنشاء التقرير بواسطة نظام مصنع الثلج المتكامل | ${new Date().toLocaleDateString('ar-EG')}</p></div>
-            </div>
-            <div style="text-align:center;margin-top:10px;"><button onclick="window.print()" style="background:#2563eb;color:white;border:none;padding:8px 20px;border-radius:8px;">🖨️ طباعة</button></div>
-            </body></html>`;
-            
-            const blob = new Blob([reportHTML], { type: 'text/html' });
-            const url = URL.createObjectURL(blob);
-            const pdfWindow = window.open(url, '_blank', 'width=800,height=600,toolbar=yes');
-            pdfWindow ? showToast('📄 تم فتح التقرير') : showToast('تم حظر النافذة المنبثقة', true);
-            URL.revokeObjectURL(url);
-        } catch (error) {
-            console.error('PDF error:', error);
-            showToast('❌ حدث خطأ', true);
-        } finally {
-            showLoading(false);
+        // فلترة البيانات بشكل صحيح
+        let filteredTransactions = appData.transactions.filter(t => t.date >= fromDate && t.date <= toDate);
+        let filteredExpenses = appData.expenses.filter(e => e.date >= fromDate && e.date <= toDate);
+        let filteredProductions = appData.productions.filter(p => p.date >= fromDate && p.date <= toDate);
+        let filteredDamages = appData.damages.filter(d => d.date >= fromDate && d.date <= toDate);
+        
+        // حساب الإحصائيات
+        const salesCash = filteredTransactions.filter(t => t.type === 'purchase' && t.remaining === 0).reduce((s, t) => s + t.paid, 0);
+        const salesDebt = filteredTransactions.filter(t => t.type === 'purchase' && t.remaining > 0).reduce((s, t) => s + t.paid, 0);
+        const repayments = filteredTransactions.filter(t => t.type === 'repayment').reduce((s, t) => s + t.paid, 0);
+        const totalRevenue = salesCash + salesDebt + repayments;
+        const totalExpenses = filteredExpenses.reduce((s, e) => s + e.amount, 0);
+        const totalProduction = filteredProductions.reduce((s, p) => s + p.boards, 0);
+        const totalDamages = filteredDamages.reduce((s, d) => s + d.qty, 0);
+        const netProfit = totalRevenue - totalExpenses;
+        const inventory = getInventory();
+        const totalDebt = getTotalDebt();
+        
+        // تجميع البيانات حسب اليوم
+        const dailyData = {};
+        const allDates = [...new Set([
+            ...filteredTransactions.map(t => t.date),
+            ...filteredExpenses.map(e => e.date),
+            ...filteredProductions.map(p => p.date)
+        ])].sort();
+        
+        allDates.forEach(date => {
+            const dayTransactions = filteredTransactions.filter(t => t.date === date);
+            const dayExpenses = filteredExpenses.filter(e => e.date === date);
+            const dayProduction = filteredProductions.filter(p => p.date === date);
+            dailyData[date] = {
+                date: date,
+                sales: dayTransactions.filter(t => t.type === 'purchase').reduce((s, t) => s + (t.paid || 0), 0),
+                repayments: dayTransactions.filter(t => t.type === 'repayment').reduce((s, t) => s + (t.paid || 0), 0),
+                expenses: dayExpenses.reduce((s, e) => s + e.amount, 0),
+                production: dayProduction.reduce((s, p) => s + p.boards, 0),
+                transactionsCount: dayTransactions.length
+            };
+        });
+        
+        // بناء جدول الملخص اليومي
+        let dailyTableRows = '';
+        for (const [date, data] of Object.entries(dailyData)) {
+            const dayProfit = (data.sales + data.repayments) - data.expenses;
+            dailyTableRows += `
+                <tr>
+                    <td style="border:1px solid #ddd;padding:8px;text-align:center;">${formatDate(date, 'arabic')}</td>
+                    <td style="border:1px solid #ddd;padding:8px;text-align:center;">${formatCurrency(data.sales + data.repayments)}</td>
+                    <td style="border:1px solid #ddd;padding:8px;text-align:center;">${formatCurrency(data.expenses)}</td>
+                    <td style="border:1px solid #ddd;padding:8px;text-align:center;color:${dayProfit >= 0 ? '#10b981' : '#ef4444'};font-weight:bold;">${formatCurrency(dayProfit)}</td>
+                    <td style="border:1px solid #ddd;padding:8px;text-align:center;">${data.production} لوح</td>
+                    <td style="border:1px solid #ddd;padding:8px;text-align:center;">${data.transactionsCount}</td>
+                </tr>
+            `;
         }
+        
+        // بناء جدول المعاملات
+        let transactionsRows = '';
+        if (reportType === 'all' || reportType === 'sales') {
+            filteredTransactions.forEach(t => {
+                transactionsRows += `
+                    <tr>
+                        <td style="border:1px solid #ddd;padding:6px;text-align:center;">${formatDate(t.date, 'arabic')}</td>
+                        <td style="border:1px solid #ddd;padding:6px;text-align:center;">${t.type === 'purchase' ? 'بيع' : 'تسديد دين'}</td>
+                        <td style="border:1px solid #ddd;padding:6px;text-align:center;">${t.customerName || 'كاش'}</td>
+                        <td style="border:1px solid #ddd;padding:6px;text-align:center;">${t.qty || '-'}</td>
+                        <td style="border:1px solid #ddd;padding:6px;text-align:center;">${formatCurrency(t.paid || 0)}</td>
+                    </tr>
+                `;
+            });
+        }
+        
+        // بناء جدول المصروفات
+        let expensesRows = '';
+        if (reportType === 'all' || reportType === 'expenses') {
+            filteredExpenses.forEach(e => {
+                expensesRows += `
+                    <tr>
+                        <td style="border:1px solid #ddd;padding:6px;text-align:center;">${formatDate(e.date, 'arabic')}</td>
+                        <td style="border:1px solid #ddd;padding:6px;text-align:center;">${e.description}</td>
+                        <td style="border:1px solid #ddd;padding:6px;text-align:center;">${formatCurrency(e.amount)}</td>
+                    </tr>
+                `;
+            });
+        }
+        
+        // بناء HTML التقرير الكامل
+        const reportHTML = `<!DOCTYPE html>
+        <html dir="rtl">
+        <head>
+            <meta charset="UTF-8">
+            <title>تقرير مصنع الثلج</title>
+            <style>
+                * {
+                    margin: 0;
+                    padding: 0;
+                    box-sizing: border-box;
+                }
+                body {
+                    font-family: 'Tajawal', 'Cairo', sans-serif;
+                    padding: 30px;
+                    background: #f0f2f5;
+                }
+                .report-container {
+                    max-width: 1200px;
+                    margin: 0 auto;
+                    background: white;
+                    border-radius: 20px;
+                    box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+                    overflow: hidden;
+                }
+                .header {
+                    background: linear-gradient(135deg, #1e40af, #2563eb);
+                    color: white;
+                    padding: 30px;
+                    text-align: center;
+                }
+                .header h1 {
+                    font-size: 1.8rem;
+                    margin-bottom: 10px;
+                }
+                .header p {
+                    font-size: 0.9rem;
+                    opacity: 0.9;
+                }
+                .summary-section {
+                    padding: 25px;
+                    background: #f8fafc;
+                }
+                .summary-grid {
+                    display: grid;
+                    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+                    gap: 15px;
+                    margin-bottom: 25px;
+                }
+                .summary-card {
+                    background: white;
+                    padding: 15px;
+                    border-radius: 12px;
+                    text-align: center;
+                    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+                }
+                .summary-card.income { border-right: 4px solid #10b981; }
+                .summary-card.expense { border-right: 4px solid #ef4444; }
+                .summary-card.profit { border-right: 4px solid #2563eb; }
+                .summary-card.stock { border-right: 4px solid #f59e0b; }
+                .summary-card .label {
+                    font-size: 0.8rem;
+                    color: #666;
+                    margin-bottom: 8px;
+                }
+                .summary-card .value {
+                    font-size: 1.3rem;
+                    font-weight: bold;
+                }
+                .section-title {
+                    font-size: 1.2rem;
+                    margin: 25px 0 15px 0;
+                    padding-right: 15px;
+                    border-right: 4px solid #2563eb;
+                    color: #1e293b;
+                }
+                .daily-table, .transactions-table, .expenses-table {
+                    width: 100%;
+                    border-collapse: collapse;
+                    margin-bottom: 20px;
+                    background: white;
+                    border-radius: 12px;
+                    overflow: hidden;
+                    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+                }
+                .daily-table th, .transactions-table th, .expenses-table th {
+                    background: #1e293b;
+                    color: white;
+                    padding: 12px;
+                    font-weight: 500;
+                    font-size: 0.85rem;
+                }
+                .daily-table td, .transactions-table td, .expenses-table td {
+                    border-bottom: 1px solid #e2e8f0;
+                    padding: 10px;
+                }
+                .daily-table tr:hover, .transactions-table tr:hover, .expenses-table tr:hover {
+                    background: #f8fafc;
+                }
+                .footer {
+                    background: #1e293b;
+                    color: #94a3b8;
+                    padding: 20px;
+                    text-align: center;
+                    font-size: 0.75rem;
+                }
+                @media print {
+                    body {
+                        background: white;
+                        padding: 0;
+                    }
+                    .report-container {
+                        box-shadow: none;
+                        border-radius: 0;
+                    }
+                    .no-print {
+                        display: none;
+                    }
+                }
+            </style>
+        </head>
+        <body>
+            <div class="report-container">
+                <div class="header">
+                    <h1>🏭 مصنع الثلج - تقرير شامل</h1>
+                    <p>📅 الفترة: ${formatDate(fromDate, 'arabic')} - ${formatDate(toDate, 'arabic')}</p>
+                    <p>🕐 تاريخ التقرير: ${new Date().toLocaleDateString('ar-EG')} - ${new Date().toLocaleTimeString('ar-EG')}</p>
+                </div>
+                
+                <div class="summary-section">
+                    <h2 class="section-title">📊 ملخص الأداء المالي</h2>
+                    <div class="summary-grid">
+                        <div class="summary-card income">
+                            <div class="label">💰 إجمالي الإيرادات</div>
+                            <div class="value">${formatCurrency(totalRevenue)}</div>
+                        </div>
+                        <div class="summary-card expense">
+                            <div class="label">💸 إجمالي المصروفات</div>
+                            <div class="value">${formatCurrency(totalExpenses)}</div>
+                        </div>
+                        <div class="summary-card profit">
+                            <div class="label">✅ صافي الربح</div>
+                            <div class="value" style="color: ${netProfit >= 0 ? '#10b981' : '#ef4444'}">${formatCurrency(netProfit)}</div>
+                        </div>
+                        <div class="summary-card stock">
+                            <div class="label">📦 المخزون المتبقي</div>
+                            <div class="value">${inventory} لوح</div>
+                        </div>
+                    </div>
+                    
+                    <div class="summary-grid">
+                        <div class="summary-card">
+                            <div class="label">🧊 إجمالي الإنتاج</div>
+                            <div class="value">${totalProduction} لوح</div>
+                        </div>
+                        <div class="summary-card">
+                            <div class="label">⚠️ إجمالي التالف</div>
+                            <div class="value">${totalDamages} لوح</div>
+                        </div>
+                        <div class="summary-card">
+                            <div class="label">📋 إجمالي الديون</div>
+                            <div class="value">${formatCurrency(totalDebt)}</div>
+                        </div>
+                        <div class="summary-card">
+                            <div class="label">👥 عدد العملاء</div>
+                            <div class="value">${appData.customers.length}</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="summary-section">
+                    <h2 class="section-title">📅 ملخص يومي للفترة</h2>
+                    <table class="daily-table">
+                        <thead>
+                            <tr>
+                                <th>التاريخ</th>
+                                <th>الإيرادات</th>
+                                <th>المصروفات</th>
+                                <th>صافي اليوم</th>
+                                <th>الإنتاج</th>
+                                <th>عدد المعاملات</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${dailyTableRows || '<tr><td colspan="6" style="text-align:center;">لا توجد بيانات</td></tr>'}
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div class="summary-section">
+                    <h2 class="section-title">📋 سجل المعاملات المالية</h2>
+                    <div style="overflow-x: auto;">
+                        <table class="transactions-table">
+                            <thead>
+                                <tr>
+                                    <th>التاريخ</th>
+                                    <th>نوع المعاملة</th>
+                                    <th>العميل</th>
+                                    <th>الكمية</th>
+                                    <th>المبلغ</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${transactionsRows || '<tr><td colspan="5" style="text-align:center;">لا توجد معاملات</td></tr>'}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                
+                ${expensesRows ? `
+                <div class="summary-section">
+                    <h2 class="section-title">💸 سجل المصروفات</h2>
+                    <div style="overflow-x: auto;">
+                        <table class="expenses-table">
+                            <thead>
+                                <tr>
+                                    <th>التاريخ</th>
+                                    <th>الوصف</th>
+                                    <th>المبلغ</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${expensesRows}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                ` : ''}
+                
+                <div class="footer">
+                    <p>🏭 تم إنشاء هذا التقرير بواسطة نظام إدارة مصنع الثلج المتكامل</p>
+                    <p>📱 للتوجيهات والاستفسار، يرجى التواصل مع الإدارة</p>
+                    <p>📅 ${new Date().toLocaleDateString('ar-EG')}</p>
+                </div>
+            </div>
+            
+            <div class="no-print" style="text-align: center; margin-top: 20px; padding: 20px;">
+                <button onclick="window.print(); setTimeout(() => window.close(), 1000);" style="background: #2563eb; color: white; border: none; padding: 12px 24px; border-radius: 10px; margin: 0 10px; cursor: pointer;">
+                    🖨️ طباعة التقرير
+                </button>
+                <button onclick="window.close()" style="background: #ef4444; color: white; border: none; padding: 12px 24px; border-radius: 10px; margin: 0 10px; cursor: pointer;">
+                    ❌ إغلاق
+                </button>
+            </div>
+        </body>
+        </html>`;
+        
+        // إنشاء Blob وفتح نافذة جديدة
+        const blob = new Blob([reportHTML], { type: 'text/html' });
+        const url = URL.createObjectURL(blob);
+        
+        const reportWindow = window.open(url, '_blank', 'width=1000,height=800,toolbar=yes,scrollbars=yes');
+        
+        if (reportWindow) {
+            reportWindow.focus();
+            showToast('📄 تم فتح التقرير - يمكنك حفظه كـ PDF');
+        } else {
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `تقرير_مصنع_الثلج_${formatDate(new Date())}.html`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            showToast('✅ تم تنزيل التقرير');
+        }
+        
+        URL.revokeObjectURL(url);
+        
+    } catch (error) {
+        console.error('PDF error:', error);
+        showToast('❌ حدث خطأ في إنشاء التقرير', true);
+    } finally {
+        showLoading(false);
     }
-
+}
     async function sharePDFToWhatsApp() {
         showLoading(true);
         showToast('⏳ جاري تجهيز التقرير للمشاركة...');
