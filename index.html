@@ -2469,89 +2469,117 @@
     // بدء أسبوع جديد (تصحيح: الديون لا تمسح)
     // ============================================
     async function startNewWeek() {
-        const weekStart = new Date();
-        weekStart.setDate(weekStart.getDate() - 7);
+    const weekStart = new Date();
+    weekStart.setDate(weekStart.getDate() - 7);
+    
+    // جلب بيانات الأسبوع المنقضي
+    const weekTransactions = appData.transactions.filter(t => t.date >= formatDate(weekStart));
+    const weekProductions = appData.productions.filter(p => p.date >= formatDate(weekStart));
+    const weekExpenses = appData.expenses.filter(e => e.date >= formatDate(weekStart));
+    const weekDamages = appData.damages.filter(d => d.date >= formatDate(weekStart));
+    
+    // حساب أرباح الأسبوع
+    const weekSales = weekTransactions.filter(t => t.type === 'purchase').reduce((s, t) => s + (t.paid || 0), 0);
+    const weekRepayments = weekTransactions.filter(t => t.type === 'repayment').reduce((s, t) => s + (t.paid || 0), 0);
+    const weekExpensesTotal = weekExpenses.reduce((s, e) => s + e.amount, 0);
+    const weekProfit = (weekSales + weekRepayments) - weekExpensesTotal;
+    const remainingStock = getInventory();
+    
+    // ✅ فصل معاملات الكاش (المدفوعة بالكامل) عن معاملات الديون
+    const cashTransactions = weekTransactions.filter(t => t.type === 'purchase' && t.remaining === 0);
+    const debtTransactions = weekTransactions.filter(t => t.type === 'purchase' && t.remaining > 0);
+    const repaymentTransactions = weekTransactions.filter(t => t.type === 'repayment');
+    
+    if (!confirm(`⚠️ هل أنت متأكد من بدء أسبوع جديد؟
+
+📊 أرباح الأسبوع: ${formatCurrency(weekProfit)}
+📦 المخزون المرحل: ${remainingStock} لوح
+
+✅ ملاحظة مهمة:
+- الديون ستبقى كما هي (لن تمسح)
+- معاملات الكاش فقط سيتم أرشفتها
+- سجل ديون العملاء يبقى كاملاً`)) return;
+    
+    showLoading(true);
+    
+    try {
+        // 1. حفظ أرشيف الأسبوع
+        const weekBackup = {
+            id: generateId(),
+            type: 'weekly_archive',
+            weekStart: formatDate(weekStart),
+            weekEnd: formatDate(new Date()),
+            profit: weekProfit,
+            sales: weekSales,
+            repayments: weekRepayments,
+            expenses: weekExpensesTotal,
+            remainingStock: remainingStock,
+            data: {
+                cashTransactions: cashTransactions,
+                productions: weekProductions,
+                expenses: weekExpenses,
+                damages: weekDamages
+            },
+            archivedAt: new Date().toISOString()
+        };
+        await DB.save('weeklyArchives', weekBackup, weekBackup.id);
         
-        const weekTransactions = appData.transactions.filter(t => t.date >= formatDate(weekStart));
-        const weekProductions = appData.productions.filter(p => p.date >= formatDate(weekStart));
-        const weekExpenses = appData.expenses.filter(e => e.date >= formatDate(weekStart));
-        const weekDamages = appData.damages.filter(d => d.date >= formatDate(weekStart));
-        
-        const weekSales = weekTransactions.filter(t => t.type === 'purchase').reduce((s, t) => s + (t.paid || 0), 0);
-        const weekRepayments = weekTransactions.filter(t => t.type === 'repayment').reduce((s, t) => s + (t.paid || 0), 0);
-        const weekExpensesTotal = weekExpenses.reduce((s, e) => s + e.amount, 0);
-        const weekProfit = (weekSales + weekRepayments) - weekExpensesTotal;
-        const remainingStock = getInventory();
-        
-        if (!confirm(`⚠️ هل أنت متأكد من بدء أسبوع جديد؟\n\n📊 أرباح الأسبوع: ${formatCurrency(weekProfit)}\n📦 المخزون المرحل: ${remainingStock} لوح\n\n✅ ملاحظة: الديون والعمال ستبقى كما هي دون تغيير`)) return;
-        
-        showLoading(true);
-        
-        try {
-            // حفظ أرشيف الأسبوع
-            const weekBackup = {
-                id: generateId(),
-                type: 'weekly_archive',
-                weekStart: formatDate(weekStart),
-                weekEnd: formatDate(new Date()),
-                profit: weekProfit,
-                sales: weekSales,
-                repayments: weekRepayments,
-                expenses: weekExpensesTotal,
-                remainingStock: remainingStock,
-                data: { transactions: weekTransactions, productions: weekProductions, expenses: weekExpenses, damages: weekDamages },
-                archivedAt: new Date().toISOString()
-            };
-            await DB.save('weeklyArchives', weekBackup, weekBackup.id);
-            
-            // حذف بيانات الأسبوع فقط (معاملات، إنتاج، مصروفات، تالف)
-            for (const t of weekTransactions) {
-                await DB.delete(DB.collections.TRANSACTIONS, t.id);
-                appData.transactions = appData.transactions.filter(x => x.id !== t.id);
-            }
-            for (const p of weekProductions) {
-                await DB.delete(DB.collections.PRODUCTIONS, p.id);
-                appData.productions = appData.productions.filter(x => x.id !== p.id);
-            }
-            for (const e of weekExpenses) {
-                await DB.delete(DB.collections.EXPENSES, e.id);
-                appData.expenses = appData.expenses.filter(x => x.id !== e.id);
-            }
-            for (const d of weekDamages) {
-                await DB.delete(DB.collections.DAMAGES, d.id);
-                appData.damages = appData.damages.filter(x => x.id !== d.id);
-            }
-            
-            // ترحيل المخزون المتبقي كإنتاج أولي للأسبوع الجديد
-            if (remainingStock > 0) {
-                const openingStock = {
-                    id: generateId(),
-                    date: formatDate(new Date()),
-                    boards: remainingStock,
-                    note: 'مخزون مرحل من الأسبوع السابق'
-                };
-                await DB.save(DB.collections.PRODUCTIONS, openingStock, openingStock.id);
-                appData.productions.push(openingStock);
-            }
-            
-            // ✅ تصفير دورات العمال فقط (السلفيات تبقى كما هي)
-            for (const worker of appData.workers) {
-                worker.cycles = 0;
-                worker.totalEarned = 0;
-                await DB.save(DB.collections.WORKERS, worker, worker.id);
-            }
-            
-            // ✅ الديون تبقى كما هي - لا يتم مسحها
-            
-            await refreshAll();
-            showToast(`✅ تم بدء أسبوع جديد - المخزون المرحل: ${remainingStock} لوح`);
-        } catch (error) {
-            console.error('Error starting week:', error);
-            showToast('❌ حدث خطأ', true);
-        } finally {
-            showLoading(false);
+        // 2. حذف معاملات الكاش فقط (وليست معاملات الديون)
+        for (const t of cashTransactions) {
+            await DB.delete(DB.collections.TRANSACTIONS, t.id);
+            appData.transactions = appData.transactions.filter(x => x.id !== t.id);
         }
+        
+        // 3. حذف الإنتاج والمصروفات والتالف
+        for (const p of weekProductions) {
+            await DB.delete(DB.collections.PRODUCTIONS, p.id);
+            appData.productions = appData.productions.filter(x => x.id !== p.id);
+        }
+        for (const e of weekExpenses) {
+            await DB.delete(DB.collections.EXPENSES, e.id);
+            appData.expenses = appData.expenses.filter(x => x.id !== e.id);
+        }
+        for (const d of weekDamages) {
+            await DB.delete(DB.collections.DAMAGES, d.id);
+            appData.damages = appData.damages.filter(x => x.id !== d.id);
+        }
+        
+        // 4. إضافة المخزون المتبقي كإنتاج أولي للأسبوع الجديد
+        if (remainingStock > 0) {
+            const openingStock = {
+                id: generateId(),
+                date: formatDate(new Date()),
+                boards: remainingStock,
+                note: 'مخزون مرحل من الأسبوع السابق'
+            };
+            await DB.save(DB.collections.PRODUCTIONS, openingStock, openingStock.id);
+            appData.productions.push(openingStock);
+        }
+        
+        // 5. تصفير دورات العمال فقط (السلفيات تبقى)
+        for (const worker of appData.workers) {
+            worker.cycles = 0;
+            worker.totalEarned = 0;
+            await DB.save(DB.collections.WORKERS, worker, worker.id);
+        }
+        
+        // ✅ الديون لم تمس - تبقى كما هي!
+        // ✅ معاملات الديون تبقى كما هي!
+        // ✅ سجل الديون التاريخي يبقى كاملاً!
+        
+        await refreshAll();
+        showToast(`✅ تم بدء أسبوع جديد
+📦 المخزون المرحل: ${remainingStock} لوح
+💰 أرباح الأسبوع المنقضي: ${formatCurrency(weekProfit)}
+📋 الديون باقية كما هي (لم تمسح)`);
+        
+    } catch (error) {
+        console.error('Error starting week:', error);
+        showToast('❌ حدث خطأ في بدء الأسبوع الجديد', true);
+    } finally {
+        showLoading(false);
     }
+}
 
     // ============================================
     // النسخ الاحتياطي
